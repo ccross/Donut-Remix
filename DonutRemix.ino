@@ -32,6 +32,7 @@ EspUsbHostCdcSerial CdcSerial(usbHost);
 #include "src/Devices.h"
 #include "src/GameIDEngine.h"
 #include "src/WebServerManager.h"
+#include "src/WebCtlBridge.h"
 
 // Global component instances
 DonutRemix::ConfigManager configMgr;
@@ -39,6 +40,7 @@ DonutRemix::SecurityManager securityMgr;
 DonutRemix::DeviceManager deviceMgr;
 DonutRemix::GameIDEngine gameIdEngine(configMgr, deviceMgr);
 DonutRemix::WebServerManager webServer(configMgr, securityMgr, deviceMgr, gameIdEngine);
+DonutRemix::WebCtlBridge wsBridge(deviceMgr, configMgr);
 
 // FreeRTOS GameID background polling task
 void gameIdTask(void *pvParameters) {
@@ -92,13 +94,16 @@ void setup() {
     // 6. Start Web Server & REST API
     webServer.begin();
 
+    // 7. Start WebCtl WebSocket Bridge on Port 81
+    wsBridge.begin();
+
 #if USB_MODE
     // Only switch USB PHY to Host mode if WiFi is connected or actively on OTG
     CdcSerial.begin(2000000);
     usbHost.begin();
 #endif
 
-    // 7. Spawn GameID Polling Task
+    // 8. Spawn GameID Polling Task
     xTaskCreate(gameIdTask, "GameIDTask", 8192, NULL, 1, NULL);
 
     deviceMgr.setLed(DonutRemix::LedState::QueryingBlue);
@@ -108,5 +113,6 @@ void setup() {
 void loop() {
     ArduinoOTA.handle();
     webServer.handleClient();
-    vTaskDelay(pdMS_TO_TICKS(2)); // yield to FreeRTOS scheduler
+    wsBridge.loop();
+    vTaskDelay(pdMS_TO_TICKS(1)); // yield to FreeRTOS scheduler
 }

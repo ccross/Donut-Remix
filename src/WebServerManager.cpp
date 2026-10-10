@@ -1,5 +1,6 @@
 #include "WebServerManager.h"
 #include "WebUI.h"
+#include "WebCtlAssets.h"
 #include "Guardrails.h"
 #include <iostream>
 
@@ -19,9 +20,14 @@ WebServerManager::WebServerManager(ConfigManager& config, SecurityManager& secur
 
 void WebServerManager::begin() {
 #ifdef ARDUINO
-    // Web UI
+    const char* headerkeys[] = {"Authorization", "X-Session-Token"};
+    m_server.collectHeaders(headerkeys, 2);
+
+    // Full WebCtl UI and GameID pages
     m_server.on("/", HTTP_GET, [this]() { handleRoot(); });
-    m_server.on("/term", HTTP_GET, [this]() { handleRoot(); });
+    m_server.on("/gameid", HTTP_GET, [this]() { handleGameID(); });
+    m_server.on("/term", HTTP_GET, [this]() { handleGameID(); });
+    m_server.on("/donut-memory", HTTP_GET, [this]() { handleDonutMemory(); });
 
     // REST API v1
     m_server.on("/api/v1/auth/login", HTTP_POST, [this]() { handleAuthLogin(); });
@@ -74,7 +80,7 @@ void WebServerManager::handleClient() {
 
 #ifdef ARDUINO
 void WebServerManager::setSecurityHeaders() {
-    m_server.sendHeader("X-Frame-Options", "DENY");
+    m_server.sendHeader("X-Frame-Options", "SAMEORIGIN");
     m_server.sendHeader("X-Content-Type-Options", "nosniff");
     m_server.sendHeader("Referrer-Policy", "no-referrer");
     m_server.sendHeader("Access-Control-Allow-Origin", "*");
@@ -116,7 +122,26 @@ bool WebServerManager::authenticateRequest() {
 
 void WebServerManager::handleRoot() {
     setSecurityHeaders();
-    m_server.send(200, "text/html", WEB_UI_HTML);
+    m_server.sendHeader("Content-Encoding", "gzip");
+    m_server.send_P(200, "text/html", (PGM_P)WEBCTL_HTML_GZ, WEBCTL_HTML_GZ_LEN);
+}
+
+void WebServerManager::handleGameID() {
+    setSecurityHeaders();
+    m_server.sendHeader("Content-Encoding", "gzip");
+    m_server.send_P(200, "text/html", (PGM_P)GAMEID_HTML_GZ, GAMEID_HTML_GZ_LEN);
+}
+
+void WebServerManager::handleDonutMemory() {
+    setSecurityHeaders();
+    JsonDocument doc;
+    doc["freeHeap"] = ESP.getFreeHeap();
+    doc["minFreeHeap"] = ESP.getMinFreeHeap();
+    doc["psramSize"] = ESP.getPsramSize();
+    doc["freePsram"] = ESP.getFreePsram();
+    String out;
+    serializeJson(doc, out);
+    m_server.send(200, "application/json", out);
 }
 
 void WebServerManager::handleAuthLogin() {
@@ -425,7 +450,7 @@ void WebServerManager::handleWebCtlCommand() {
 
 void WebServerManager::handleWebCtlOptions() {
     setSecurityHeaders();
-    m_server.send(200, "application/json", "{\"struct\":true,\"console\":true,\"expert\":false}");
+    m_server.send(200, "application/json", "{\"struct\":true,\"console\":true,\"expert\":true,\"diag\":true,\"showDonutMemory\":false}");
 }
 
 void WebServerManager::handleWebCtlInfo() {
@@ -491,6 +516,13 @@ void WebServerManager::handleWebCtlMove() {
 
 void WebServerManager::handleWebCtlTheme() {
     setSecurityHeaders();
+    if (m_server.method() == HTTP_POST && m_server.hasArg("plain")) {
+        std::string theme = m_server.arg("plain").c_str();
+        if (theme == "light") {
+            m_server.send(200, "application/json", "{\"theme\":\"light\"}");
+            return;
+        }
+    }
     m_server.send(200, "application/json", "{\"theme\":\"dark\"}");
 }
 

@@ -27,8 +27,9 @@ void DeviceManager::init() {
     pinMode(LED_BLUE, OUTPUT);
     pinMode(LED_RED, OUTPUT);
 
-    // Initial RT4K Serial baud rate (standard 9600 or 2M depending on firmware)
-    Serial.begin(9600);
+    // Initial RT4K Serial baud rate on hardware pins 0/1 (Serial0)
+    Serial0.begin(m_rt4kBaud);
+    Serial.begin(115200);
     ExtronSerial1.begin(9600, SERIAL_8N1, 3, 4);
     ExtronSerial1.setTimeout(50);
     ExtronSerial2.begin(9600, SERIAL_8N1, 8, 9);
@@ -77,6 +78,7 @@ void DeviceManager::sendRawCommand(const std::string& cmd) {
     std::lock_guard<std::mutex> lock(m_ioMutex);
 #ifdef ARDUINO
     std::string formatted = "\r" + cmd + "\r\n";
+    Serial0.print(formatted.c_str());
     Serial.print(formatted.c_str());
 #if defined(USB_MODE) && USB_MODE
     CdcSerial.print(formatted.c_str());
@@ -91,6 +93,7 @@ void DeviceManager::sendSvsInput(uint16_t svsNumber) {
     std::string cmd = "\rSVS NEW INPUT=" + std::to_string(svsNumber) + "\r\n";
 #ifdef ARDUINO
     digitalWrite(LED_PIN_BUILTIN, HIGH);
+    Serial0.print(cmd.c_str());
     Serial.print(cmd.c_str());
 #if defined(USB_MODE) && USB_MODE
     CdcSerial.print(cmd.c_str());
@@ -107,6 +110,7 @@ void DeviceManager::sendRemoteButtonProfile(int rbpNumber) {
     std::lock_guard<std::mutex> lock(m_ioMutex);
     std::string cmd = "\rremote prof" + std::to_string(rbpNumber) + "\r\n";
 #ifdef ARDUINO
+    Serial0.print(cmd.c_str());
     Serial.print(cmd.c_str());
 #if defined(USB_MODE) && USB_MODE
     CdcSerial.print(cmd.c_str());
@@ -183,6 +187,75 @@ void DeviceManager::releaseSerialLock(uint32_t token) {
         m_lockOwner.clear();
         m_lockToken = 0;
     }
+}
+
+void DeviceManager::writeRT4KBytes(const uint8_t* data, size_t len) {
+    std::lock_guard<std::mutex> lock(m_ioMutex);
+#ifdef ARDUINO
+    Serial0.write(data, len);
+#if defined(USB_MODE) && USB_MODE
+    if (CdcSerial.connected()) {
+        CdcSerial.write(data, len);
+    }
+#endif
+#else
+    (void)data;
+    (void)len;
+#endif
+}
+
+size_t DeviceManager::readRT4KBytes(uint8_t* buffer, size_t maxLen) {
+    std::lock_guard<std::mutex> lock(m_ioMutex);
+#ifdef ARDUINO
+#if defined(USB_MODE) && USB_MODE
+    if (CdcSerial.connected() && CdcSerial.available()) {
+        return CdcSerial.readBytes(buffer, maxLen);
+    }
+#endif
+    if (Serial0.available()) {
+        return Serial0.readBytes(buffer, maxLen);
+    }
+    return 0;
+#else
+    (void)buffer;
+    (void)maxLen;
+    return 0;
+#endif
+}
+
+void DeviceManager::setRT4KBaud(uint32_t baud) {
+    std::lock_guard<std::mutex> lock(m_ioMutex);
+    m_rt4kBaud = baud;
+#ifdef ARDUINO
+    Serial0.begin(baud);
+#if defined(USB_MODE) && USB_MODE
+    if (CdcSerial.connected()) {
+        CdcSerial.begin(baud);
+    }
+#endif
+#endif
+}
+
+bool DeviceManager::isUsbConnected() const {
+#if defined(USB_MODE) && USB_MODE
+    return CdcSerial.connected();
+#else
+    return false;
+#endif
+}
+
+void DeviceManager::wakeRT4K() {
+    std::lock_guard<std::mutex> lock(m_ioMutex);
+#ifdef ARDUINO
+    Serial0.print("\rpwr on\r\n");
+#if defined(USB_MODE) && USB_MODE
+    if (CdcSerial.connected()) {
+        CdcSerial.print("\rpwr on\r\n");
+    }
+#endif
+#else
+    std::cout << "[Device Mock RT4K] Wake sent" << std::endl;
+#endif
 }
 
 } // namespace DonutRemix
