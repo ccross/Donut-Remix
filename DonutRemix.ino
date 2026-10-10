@@ -59,10 +59,16 @@ void setup() {
     }
 
     // 3. Connect WiFi using WiFiManager
+    auto vars = configMgr.getVars();
+    WiFi.setHostname(vars.hostname.c_str());
+    esp_wifi_set_ps(WIFI_PS_NONE); // Disable power saving to maximize AP broadcast signal
+
     WiFiManager wm;
-    wm.setConfigPortalTimeout(180); // 3-minute timeout guard
-    // Protected fallback access point
-    if (!wm.autoConnect("DonutRemix_Setup", "donutremix")) {
+    std::vector<const char *> menu = {"wifi"};
+    wm.setMenu(menu);
+    // Open setup AP (no password needed to join portal, avoiding phone handshake drops)
+    // No timeout: stays active indefinitely until user configures home WiFi
+    if (!wm.autoConnect("DonutRemix_Setup")) {
         Serial.println(F("[WARN] WiFi failed to connect, continuing in offline mode"));
     } else {
         Serial.print(F("[INFO] WiFi connected: "));
@@ -70,7 +76,6 @@ void setup() {
     }
 
     // 4. mDNS
-    auto vars = configMgr.getVars();
     if (MDNS.begin(vars.hostname.c_str())) {
         MDNS.addService("http", "tcp", 80);
         Serial.printf("[INFO] mDNS responder started: http://%s.local\n", vars.hostname.c_str());
@@ -78,7 +83,6 @@ void setup() {
 
     // 5. Secure ArduinoOTA Setup (Fixes VULN-02)
     ArduinoOTA.setHostname(vars.hostname.c_str());
-    // Require password authentication for port 3232 OTA
     ArduinoOTA.setPassword(securityMgr.getPasswordHash().substr(0, 16).c_str());
     ArduinoOTA.onError([](ota_error_t error) {
         Serial.printf("[OTA] Error[%u]\n", error);
@@ -89,10 +93,9 @@ void setup() {
     webServer.begin();
 
 #if USB_MODE
+    // Only switch USB PHY to Host mode if WiFi is connected or actively on OTG
     CdcSerial.begin(2000000);
-    if (!usbHost.begin()) {
-        Serial.printf("[WARN] usbHost.begin failed: %s\n", usbHost.lastErrorName());
-    }
+    usbHost.begin();
 #endif
 
     // 7. Spawn GameID Polling Task
