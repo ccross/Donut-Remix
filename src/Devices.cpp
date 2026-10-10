@@ -189,17 +189,86 @@ void DeviceManager::releaseSerialLock(uint32_t token) {
     }
 }
 
+static uint16_t rtl1_crc16_update(uint16_t crc, uint8_t b) {
+    crc ^= (uint16_t)b << 8;
+    for (int i = 0; i < 8; i++) {
+        if (crc & 0x8000) {
+            crc = (crc << 1) ^ 0x1021;
+        } else {
+            crc <<= 1;
+        }
+    }
+    return crc;
+}
+
+static uint16_t rtl1_crc16(const uint8_t* data, size_t len, uint16_t init = 0xFFFF) {
+    uint16_t crc = init;
+    for (size_t i = 0; i < len; i++) {
+        crc = rtl1_crc16_update(crc, data[i]);
+    }
+    return crc;
+}
+
 void DeviceManager::writeRT4KBytes(const uint8_t* data, size_t len) {
     std::lock_guard<std::mutex> lock(m_ioMutex);
 #ifdef ARDUINO
-    Serial0.write(data, len);
 #if defined(USB_MODE) && USB_MODE
-    CdcSerial.write(data, len);
+    if (CdcSerial.connected()) {
+        CdcSerial.write(data, len);
+        return;
+    }
 #endif
+    Serial0.write(data, len);
 #else
     (void)data;
     (void)len;
 #endif
+}
+
+bool DeviceManager::sendRtl1Frame(uint16_t nonce, uint8_t type, uint8_t seq, const uint8_t* payload, size_t len) {
+    if (len > 2048) return false;
+    uint8_t frame[2060];
+    frame[0] = 0xA5;
+    frame[1] = 0x5A;
+    frame[2] = nonce & 0xFF;
+    frame[3] = (nonce >> 8) & 0xFF;
+    frame[4] = len & 0xFF;
+    frame[5] = (len >> 8) & 0xFF;
+    frame[6] = type;
+    frame[7] = seq;
+
+    uint16_t crc = rtl1_crc16(&frame[2], 6);
+    if (payload && len > 0) {
+        memcpy(&frame[8], payload, len);
+        crc = rtl1_crc16(payload, len, crc);
+    }
+    frame[8 + len] = crc & 0xFF;
+    frame[9 + len] = (crc >> 8) & 0xFF;
+
+    writeRT4KBytes(frame, 10 + len);
+    return true;
+}
+
+void DeviceManager::beginHttpPutSession(uint32_t token, uint16_t nonce, size_t size, bool localAck, uint16_t payload) {
+    std::lock_guard<std::mutex> lock(m_ioMutex);
+    m_putSession.active = true;
+    m_putSession.token = token;
+    m_putSession.nonce = nonce;
+    m_putSession.expectedSize = size;
+    m_putSession.localAck = localAck;
+    m_putSession.payloadSize = payload;
+    m_putSession.bytesSent = 0;
+    m_putSession.framesSent = 0;
+    m_putSession.seq = 0;
+    m_putSession.chunkLen = 0;
+    m_putSession.startTime = 0;
+    m_putSession.lastError.clear();
+}
+
+void DeviceManager::endHttpPutSession() {
+    std::lock_guard<std::mutex> lock(m_ioMutex);
+    m_putSession.active = false;
+    m_putSession.chunkLen = 0;
 }
 
 size_t DeviceManager::readRT4KBytes(uint8_t* buffer, size_t maxLen) {

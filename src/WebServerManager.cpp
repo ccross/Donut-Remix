@@ -101,6 +101,12 @@ void WebServerManager::begin() {
     m_server.on("/webctl-options", HTTP_POST, [this]() { handleWebCtlOptions(); });
     m_server.on("/webctl-theme", HTTP_GET, [this]() { handleWebCtlTheme(); });
     m_server.on("/webctl-theme", HTTP_POST, [this]() { handleWebCtlTheme(); });
+    m_server.on("/put", HTTP_POST, [this]() { handlePutResponse(); }, [this]() { handlePutUpload(); });
+    m_server.on("/put", HTTP_OPTIONS, [this]() {
+        setSecurityHeaders();
+        m_server.sendHeader("Access-Control-Allow-Headers", "Content-Type");
+        m_server.send(204);
+    });
 
     m_server.begin();
 #endif
@@ -564,6 +570,100 @@ void WebServerManager::handleWebCtlTheme() {
         }
     }
     m_server.send(200, "application/json", "{\"theme\":\"dark\"}");
+}
+
+void WebServerManager::handlePutUpload() {
+    if (!m_server.hasRaw()) return;
+    HTTPRaw& raw = m_server.raw();
+    auto& session = m_devices.getHttpPutSessionRef();
+    if (!session.active) return;
+
+    if (raw.status == RAW_START) {
+        session.chunkLen = 0;
+        session.bytesSent = 0;
+        session.framesSent = 0;
+        session.seq = 0;
+        session.startTime = millis();
+        session.lastError.clear();
+    } else if (raw.status == RAW_WRITE) {
+        if (!session.lastError.empty()) return;
+        const uint8_t* inPtr = raw.buf;
+        size_t inRemaining = raw.currentSize;
+
+        while (inRemaining > 0) {
+            size_t space = session.payloadSize - session.chunkLen;
+            size_t toCopy = std::min(inRemaining, space);
+            memcpy(session.chunkBuf + session.chunkLen, inPtr, toCopy);
+            session.chunkLen += toCopy;
+            inPtr += toCopy;
+            inRemaining -= toCopy;
+
+            if (session.chunkLen == session.payloadSize) {
+                if (!m_devices.sendRtl1Frame(session.nonce, 3 /* T_DATA */, session.seq++, session.chunkBuf, session.chunkLen)) {
+                    session.lastError = "USB write failure";
+                    return;
+                }
+                session.bytesSent += session.chunkLen;
+                session.framesSent++;
+                session.chunkLen = 0;
+                delay(3);
+            }
+        }
+    } else if (raw.status == RAW_END) {
+        if (!session.lastError.empty()) return;
+        if (session.chunkLen > 0) {
+            if (!m_devices.sendRtl1Frame(session.nonce, 3 /* T_DATA */, session.seq++, session.chunkBuf, session.chunkLen)) {
+                session.lastError = "USB write failure";
+                return;
+            }
+            session.bytesSent += session.chunkLen;
+            session.framesSent++;
+            session.chunkLen = 0;
+            delay(3);
+        }
+
+        // Send zero-length EOF frame
+        uint8_t eofSeq = session.seq;
+        if (!m_devices.sendRtl1Frame(session.nonce, 3 /* T_DATA */, eofSeq, nullptr, 0)) {
+            session.lastError = "USB EOF write failure";
+            return;
+        }
+        session.framesSent++;
+    } else if (raw.status == RAW_ABORTED) {
+        session.lastError = "Upload aborted by client";
+    }
+}
+
+void WebServerManager::handlePutResponse() {
+    setSecurityHeaders();
+    auto& session = m_devices.getHttpPutSessionRef();
+    if (!session.active) {
+        m_server.send(400, "application/json", "{\"ok\":false,\"error\":\"No active PUT session\"}");
+        return;
+    }
+
+    if (m_server.hasArg("token")) {
+        uint32_t reqToken = strtoul(m_server.arg("token").c_str(), nullptr, 10);
+        if (reqToken != session.token) {
+            m_server.send(403, "application/json", "{\"ok\":false,\"error\":\"Invalid session token\"}");
+            return;
+        }
+    }
+
+    if (!session.lastError.empty()) {
+        char errBuf[128];
+        snprintf(errBuf, sizeof(errBuf), "{\"ok\":false,\"bytes\":%u,\"frames\":%u,\"ms\":%u,\"error\":\"%s\"}",
+            (unsigned)session.bytesSent, (unsigned)session.framesSent,
+            (unsigned)(millis() - session.startTime), session.lastError.c_str());
+        m_server.send(500, "application/json", errBuf);
+        return;
+    }
+
+    char respBuf[128];
+    snprintf(respBuf, sizeof(respBuf), "{\"ok\":true,\"bytes\":%u,\"frames\":%u,\"eof\":true,\"eofSeq\":%u,\"ms\":%u,\"localAck\":%s}",
+        (unsigned)session.bytesSent, (unsigned)session.framesSent, (unsigned)session.seq,
+        (unsigned)(millis() - session.startTime), session.localAck ? "true" : "false");
+    m_server.send(200, "application/json", respBuf);
 }
 
 void WebServerManager::handleSystemBackup() {

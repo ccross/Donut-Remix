@@ -62,6 +62,8 @@ private:
     void handleWebCtlMove();
     void handleWebCtlOptions();
     void handleWebCtlTheme();
+    void handlePutResponse();
+    void handlePutUpload();
     void handleGameID();
     void handleDonutMemory();
 #endif

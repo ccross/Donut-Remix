@@ -220,6 +220,45 @@ void WebCtlBridge::handleControlJson(uint8_t clientNum, const std::string& jsonS
         String out;
         serializeJson(res, out);
         m_wsServer.sendTXT(clientNum, out.c_str());
+    } else if (strcmp(op, "httpTxStreamBegin") == 0) {
+        uint16_t nonce = doc["nonce"] | 0;
+        size_t size = doc["size"] | 0;
+        bool localAck = doc["localAck"] | false;
+        uint16_t payload = doc["payload"] | 2048;
+        if (payload == 0 || payload > 2048) payload = 2048;
+
+        uint32_t token = (uint32_t)random(0x10000000, 0x7FFFFFFF);
+        m_devices.beginHttpPutSession(token, nonce, size, localAck, payload);
+
+        JsonDocument res;
+        res["type"] = "rt4k-bridge";
+        res["op"] = "httpTxStreamBegin";
+        res["ok"] = true;
+        res["bulk"] = "http";
+        res["port"] = 80;
+        res["token"] = token;
+        res["localAck"] = localAck;
+        res["payload"] = payload;
+        String out;
+        serializeJson(res, out);
+        m_wsServer.sendTXT(clientNum, out.c_str());
+    } else if (strcmp(op, "httpTxStreamEnd") == 0) {
+        auto& session = m_devices.getHttpPutSessionRef();
+        JsonDocument res;
+        res["type"] = "rt4k-bridge";
+        res["op"] = "httpTxStreamEnd";
+        res["ok"] = true;
+        if (!session.lastError.empty()) {
+            res["transferError"] = true;
+            res["error"] = session.lastError.c_str();
+            res["bytes"] = (uint32_t)session.bytesSent;
+            res["frames"] = (uint32_t)session.framesSent;
+            res["ms"] = (uint32_t)(millis() - session.startTime);
+        }
+        m_devices.endHttpPutSession();
+        String out;
+        serializeJson(res, out);
+        m_wsServer.sendTXT(clientNum, out.c_str());
     } else if (strcmp(op, "serialLockAck") == 0) {
         uint32_t token = doc["token"] | 0;
         JsonDocument res;

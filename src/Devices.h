@@ -62,6 +62,28 @@ public:
     bool isUsbConnected() const;
     void wakeRT4K();
 
+    // HTTP Bulk PUT Session for WebCtl
+    struct HttpPutSession {
+        bool active{false};
+        uint32_t token{0};
+        uint16_t nonce{0};
+        size_t expectedSize{0};
+        size_t bytesSent{0};
+        uint32_t framesSent{0};
+        uint8_t seq{0};
+        uint16_t payloadSize{2048};
+        bool localAck{false};
+        uint32_t startTime{0};
+        uint8_t chunkBuf[2048];
+        size_t chunkLen{0};
+        std::string lastError;
+    };
+
+    void beginHttpPutSession(uint32_t token, uint16_t nonce, size_t size, bool localAck, uint16_t payload);
+    void endHttpPutSession();
+    HttpPutSession& getHttpPutSessionRef() { return m_putSession; }
+    bool sendRtl1Frame(uint16_t nonce, uint8_t type, uint8_t seq, const uint8_t* payload, size_t len);
+
     int getCurrentProfile() const { return m_currentProfile; }
 
 private:
@@ -73,6 +95,8 @@ private:
     bool m_serialLocked{false};
     std::string m_lockOwner;
     uint32_t m_lockToken{0};
+
+    HttpPutSession m_putSession;
 };
 
 } // namespace DonutRemix
