@@ -2,6 +2,9 @@
 
 **Donut Remix** is a modern, security-hardened, contract-first fork of [DonutShop](https://github.com/svirant/DonutShop) for the **Arduino Nano ESP32 (ESP32-S3)** and the **RetroTINK 4K**. It automates RetroTINK 4K profiles based on `gameID` queries across network-connected retro consoles (such as PS1Digital, N64Digital, RetroGEM, and MemCardPro 2) and provides an authenticated WebCtl remote management interface.
 
+> [!NOTE]
+> **AI-Assisted Project:** Donut Remix is a Gemini-assisted project, engineered using contract-first modular architecture, automated security threat modeling, and test-driven verification.
+
 ---
 
 ## Why Donut Remix?
@@ -150,6 +153,14 @@ curl -X POST http://donutshop.local/api/v1/command \
 ```
 
 For full documentation, see [docs/API.md](file:///home/ccross/code/donut-remix/docs/API.md) and [docs/openapi.yaml](file:///home/ccross/code/donut-remix/docs/openapi.yaml).
+
+---
+
+## Acknowledgments
+
+- **Gemini**: Architectural design, vulnerability auditing, security guardrails, and test-driven refactoring assistance.
+- **RetroTINK LLC (Mike Chi)**: Creator of the RetroTINK 4K, firmware documentation, and serial command protocols.
+- **svirant**: Original author of the open-source DonutShop v0.6.3 sketch.
 
 ---
 
