@@ -56,8 +56,30 @@ void WebCtlBridge::onWebSocketEvent(uint8_t num, WStype_t type, uint8_t * payloa
         case WStype_DISCONNECTED:
             break;
 
-        case WStype_CONNECTED:
+        case WStype_CONNECTED: {
+            bool usb = m_devices.isUsbConnected();
+            JsonDocument info;
+            info["type"] = "info";
+            info["usbConnected"] = usb;
+            info["hostname"] = "donutshop";
+            info["baud"] = usb ? 2000000 : m_devices.getRT4KBaud();
+            String s1;
+            serializeJson(info, s1);
+            m_wsServer.sendTXT(num, s1.c_str());
+
+            JsonDocument hello;
+            hello["type"] = "rt4k-bridge";
+            hello["op"] = "hello";
+            hello["ok"] = true;
+            hello["baud"] = usb ? 2000000 : m_devices.getRT4KBaud();
+            hello["preferredHd15Baud"] = 2000000;
+            hello["hostname"] = "donutshop";
+            hello["usbConnected"] = usb;
+            String s2;
+            serializeJson(hello, s2);
+            m_wsServer.sendTXT(num, s2.c_str());
             break;
+        }
 
         case WStype_TEXT: {
             std::string msg((char*)payload, length);
@@ -105,6 +127,16 @@ void WebCtlBridge::handleControlJson(uint8_t clientNum, const std::string& jsonS
         res["preferredHd15Baud"] = 2000000;
         res["hostname"] = "donutshop";
         res["usbConnected"] = usb;
+        String out;
+        serializeJson(res, out);
+        m_wsServer.sendTXT(clientNum, out.c_str());
+    } else if (strcmp(op, "info") == 0) {
+        bool usb = m_devices.isUsbConnected();
+        JsonDocument res;
+        res["type"] = "info";
+        res["usbConnected"] = usb;
+        res["hostname"] = "donutshop";
+        res["baud"] = usb ? 2000000 : m_devices.getRT4KBaud();
         String out;
         serializeJson(res, out);
         m_wsServer.sendTXT(clientNum, out.c_str());

@@ -30,10 +30,32 @@ void WebServerManager::begin() {
 
     // Full WebCtl UI and GameID pages
     m_server.on("/", HTTP_GET, [this]() { handleRoot(); });
+    m_server.on("/", HTTP_HEAD, [this]() { handleRoot(); });
+    m_server.on("/", HTTP_OPTIONS, [this]() { setSecurityHeaders(); m_server.send(204); });
     m_server.on("/gameid", HTTP_GET, [this]() { handleGameID(); });
     m_server.on("/term", HTTP_GET, [this]() { handleGameID(); });
     m_server.on("/donut-memory", HTTP_GET, [this]() { handleDonutMemory(); });
     m_server.on("/favicon.ico", HTTP_GET, [this]() { m_server.send(204); });
+    m_server.on("/webctl-theme", HTTP_GET, [this]() {
+        setSecurityHeaders();
+        m_server.send(200, "application/json", "{\"ok\":true,\"theme\":\"dark\"}");
+    });
+    m_server.on("/webctl-theme", HTTP_POST, [this]() {
+        setSecurityHeaders();
+        m_server.send(200, "application/json", "{\"ok\":true,\"theme\":\"dark\"}");
+    });
+    m_server.on("/webctl-options", HTTP_GET, [this]() {
+        setSecurityHeaders();
+        m_server.send(200, "application/json", "{\"ok\":true,\"struct\":true,\"console\":true,\"expert\":true,\"diag\":true,\"memory\":true,\"fwtest\":false}");
+    });
+    m_server.on("/webctl-options", HTTP_POST, [this]() {
+        setSecurityHeaders();
+        m_server.send(200, "application/json", "{\"ok\":true,\"struct\":true,\"console\":true,\"expert\":true,\"diag\":true,\"memory\":true,\"fwtest\":false}");
+    });
+    m_server.on("/rt4k-fw-cleanup", HTTP_POST, [this]() {
+        setSecurityHeaders();
+        m_server.send(200, "application/json", "{\"ok\":true}");
+    });
     m_server.on("/rt4k-fw-meta", HTTP_GET, [this]() {
         String ver = m_server.hasArg("version") ? m_server.arg("version") : "1.96.0";
         JsonDocument doc;

@@ -81,7 +81,12 @@ void DeviceManager::sendRawCommand(const std::string& cmd) {
     Serial0.print(formatted.c_str());
     Serial.print(formatted.c_str());
 #if defined(USB_MODE) && USB_MODE
-    CdcSerial.print(formatted.c_str());
+    if (CdcSerial.connected()) {
+        if (!usbHost.serialWriteQueueReady()) {
+            usbHost.serialWriteQueueBegin(4, 2060);
+        }
+        CdcSerial.write((const uint8_t*)formatted.c_str(), formatted.length());
+    }
 #endif
 #else
     std::cout << "[Device Mock RT4K] Raw Command: " << cmd << std::endl;
@@ -318,7 +323,11 @@ void DeviceManager::setRT4KBaud(uint32_t baud) {
 #ifdef ARDUINO
     Serial0.begin(baud);
 #if defined(USB_MODE) && USB_MODE
-    CdcSerial.setBaudRate(baud);
+    if (!CdcSerial.connected()) {
+        CdcSerial.setBaudRate(baud);
+    } else {
+        CdcSerial.setBaudRate(2000000);
+    }
 #endif
 #endif
 }
