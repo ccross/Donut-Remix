@@ -27,10 +27,14 @@ void WebCtlBridge::loop() {
 #ifdef ARDUINO
     m_wsServer.loop();
 
-    // Proxy serial bytes received from RT4K to all connected WebCtl browser clients
-    size_t bytesRead = m_devices.readRT4KBytes(m_rxBuffer, sizeof(m_rxBuffer));
-    if (bytesRead > 0) {
-        m_wsServer.broadcastBIN(m_rxBuffer, bytesRead);
+    // Drain all available serial bytes from RT4K to connected WebCtl browser clients
+    while (true) {
+        size_t bytesRead = m_devices.readRT4KBytes(m_rxBuffer, sizeof(m_rxBuffer));
+        if (bytesRead > 0) {
+            m_wsServer.broadcastBIN(m_rxBuffer, bytesRead);
+        } else {
+            break;
+        }
     }
 #endif
 }

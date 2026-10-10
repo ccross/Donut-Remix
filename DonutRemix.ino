@@ -21,6 +21,9 @@
 #include <ESPmDNS.h>
 
 #if USB_MODE
+#ifndef ESP_USB_HOST_CDC_RX_BUFFER_SIZE
+#define ESP_USB_HOST_CDC_RX_BUFFER_SIZE 16384
+#endif
 #include <EspUsbHost.h>
 EspUsbHost usbHost;
 EspUsbHostCdcSerial CdcSerial(usbHost);
@@ -56,6 +59,7 @@ void setup() {
     deviceMgr.init();
 
 #if USB_MODE
+    CdcSerial.setRxBufferSize(16384);
     CdcSerial.begin(2000000);
     usbHost.begin();
 #endif

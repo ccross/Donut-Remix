@@ -34,6 +34,9 @@ void WebServerManager::begin() {
     m_server.on("/term", HTTP_GET, [this]() { handleGameID(); });
     m_server.on("/donut-memory", HTTP_GET, [this]() { handleDonutMemory(); });
     m_server.on("/favicon.ico", HTTP_GET, [this]() { m_server.send(204); });
+    m_server.on("/rt4k-fw-meta", HTTP_GET, [this]() {
+        m_server.send(200, "application/json", "{\"ok\":true,\"version\":\"1.95.0\",\"versions\":[\"1.95.0\"]}");
+    });
 
     // REST API v1
     m_server.on("/api/v1/auth/login", HTTP_POST, [this]() { handleAuthLogin(); });

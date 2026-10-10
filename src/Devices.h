@@ -10,6 +10,9 @@
 #endif
 #include <Arduino.h>
 #if USB_MODE
+#ifndef ESP_USB_HOST_CDC_RX_BUFFER_SIZE
+#define ESP_USB_HOST_CDC_RX_BUFFER_SIZE 16384
+#endif
 #include <EspUsbHost.h>
 #endif
 #endif
