@@ -31,14 +31,20 @@ For full technical details, see the complete [SECURITY_AUDIT.md](file:///home/cc
   - Port 3232 `ArduinoOTA` protected by cryptographic password authentication.
 - 🚦 **Network & Input Guardrails:**
   - SSRF protection: Rejects loopback (`127.0.0.1`, `localhost`), cloud metadata (`169.254.169.254`), multicast, and dangerous ports.
+  - Hostname validation: Strictly enforces lowercase `a-z`, `0-9`, and `-` (no edge hyphens, max 32 chars) preventing mDNS/DNS crashes (upstream v0.7.14 regression).
+  - Path traversal prevention: Rejects `..` and illegal filesystem characters in file manager operations (`/api/files/*`).
   - Command sanitization: Strips null bytes and control escapes before serial/IR dispatch.
   - Safe bounds checking on all collections (`MAX_CONSOLES` = 16, `MAX_GAMEDB` = 2,000).
-- 📡 **Well-Documented REST API:**
+- 🔒 **Serial Bus Lock & Concurrency Guardrail:**
+  - Automatically suspends background GameID polling whenever firmware updates or file transfers occur, eliminating serial packet collisions and FreeRTOS DMA crashes (upstream v0.7.5 / v0.7.9 regression).
+- 📡 **Well-Documented REST API & Full WebCtl Compatibility:**
   - Modern, versioned REST endpoints (`/api/v1/status`, `/api/v1/consoles`, `/api/v1/gamedb`, `/api/v1/command`).
+  - Drop-in support for the REST API introduced in upstream v0.7.25 (`/api/info`, `/api/status`, `/api/command`, `/api/files/*`, `/api/files/mkdir`, `/api/files/move`), now secured with authentication.
   - Complete [OpenAPI 3.0 Specification](file:///home/ccross/code/donut-remix/docs/openapi.yaml).
   - Comprehensive human-readable [API Documentation](file:///home/ccross/code/donut-remix/docs/API.md).
-- 🧩 **Modular Architecture:**
+- 🧩 **Modular Architecture & Memory Safety:**
   - Deconstructed the fragile 6,000-line monolithic `.ino` into clean, decoupled C++ modules with FreeRTOS mutex synchronization.
+  - Fixed-capacity data structures and streaming serialization prevent ESP32-S3 SRAM heap exhaustion.
 - 🎨 **Modern Responsive Web UI:**
   - Built-in Single Page Application with Dark, Light, and Glazed themes.
   - Live console ping/test tools, searchable GameID table, interactive RT4K remote, and WebCtl file manager.
@@ -150,6 +156,16 @@ curl -X POST http://donutshop.local/api/v1/command \
      -H "Authorization: Bearer 4a2b9f01e7c538209ad43bf1e02947ac" \
      -H "Content-Type: application/json" \
      -d '{"command": "remote prof1"}'
+```
+
+Query WebCtl device info & SD card files (v0.7.25 compatibility):
+```bash
+# Query hardware info
+curl http://donutshop.local/api/info
+
+# Browse RT4K SD card root (authenticated)
+curl -H "Authorization: Bearer 4a2b9f01e7c538209ad43bf1e02947ac" \
+     http://donutshop.local/api/files
 ```
 
 For full documentation, see [docs/API.md](file:///home/ccross/code/donut-remix/docs/API.md) and [docs/openapi.yaml](file:///home/ccross/code/donut-remix/docs/openapi.yaml).
