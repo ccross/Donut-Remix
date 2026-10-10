@@ -1,0 +1,199 @@
+# Donut Remix REST API Documentation
+
+Donut Remix provides a secure, versioned, RESTful API (`/api/v1/`) for monitoring, configuring, and controlling the RetroTINK 4K, video switches, and console gameID polling.
+
+---
+
+## 1. Authentication & Security
+
+### Overview
+All state-modifying requests (`POST`, `PUT`, `DELETE`) and sensitive endpoints require an authenticated session token.
+
+### Authentication Flow
+1. Send a POST request to `/api/v1/auth/login` with your admin password.
+2. Receive a 32-character session token.
+3. Pass the session token in subsequent requests using either:
+   - **Header:** `Authorization: Bearer <token>`
+   - **Alternative Header:** `X-Session-Token: <token>`
+
+### Brute Force Protection
+- Failed login attempts are tracked per client IP.
+- After **5 failed attempts**, the client IP is locked out for **60 seconds** (HTTP `429 Too Many Requests`).
+
+---
+
+## 2. API Endpoints
+
+### `POST /api/v1/auth/login`
+Authenticate as administrator and obtain a session token.
+
+**Request Body:**
+```json
+{
+  "password": "yourAdminPassword"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "token": "4a2b9f01e7c538209ad43bf1e02947ac",
+  "expiresIn": 86400
+}
+```
+
+---
+
+### `POST /api/v1/auth/logout`
+Invalidate the current session token.
+
+**Headers:** `Authorization: Bearer <token>`
+
+**Response (200 OK):**
+```json
+{
+  "status": "ok"
+}
+```
+
+---
+
+### `GET /api/v1/status`
+Retrieve real-time system, profile, and active console telemetry.
+
+**Response (200 OK):**
+```json
+{
+  "uptime": 14250,
+  "active_profile": 7,
+  "active_console": "PS1 Digital",
+  "rt4k_status": "Ready"
+}
+```
+
+---
+
+### `GET /api/v1/consoles`
+List all configured consoles and their live operational status.
+
+**Response (200 OK):**
+```json
+[
+  {
+    "Desc": "PS1 Digital",
+    "Address": "http://ps1digital.local/gameid",
+    "DefaultProf": -9,
+    "Enabled": true,
+    "On": true,
+    "King": true
+  },
+  {
+    "Desc": "MemCardPro",
+    "Address": "http://10.0.1.50/api/currentState",
+    "DefaultProf": -5,
+    "Enabled": true,
+    "On": false,
+    "King": false
+  }
+]
+```
+
+---
+
+### `POST /api/v1/consoles`
+Update the list of monitored consoles.
+
+**Headers:** `Authorization: Bearer <token>`  
+**Guardrails:**
+- Maximum **16** console entries.
+- URLs must be valid `http://` or `https://`.
+- Loopback (`127.0.0.1`, `localhost`) and Cloud Metadata (`169.254.169.254`) addresses are blocked.
+- Names are capped at 64 characters.
+
+**Request Body:**
+```json
+[
+  {
+    "Desc": "PS1 Digital",
+    "Address": "http://ps1digital.local/gameid",
+    "DefaultProf": -9,
+    "Enabled": true
+  }
+]
+```
+
+---
+
+### `GET /api/v1/gamedb`
+List gameID-to-profile mappings.
+
+**Response (200 OK):**
+```json
+[
+  ["N64 EverDrive", "00000000-00000000---00", "7"],
+  ["Super Mario 64", "4e534d45", "1"]
+]
+```
+
+---
+
+### `POST /api/v1/gamedb`
+Update gameID mappings table.
+
+**Headers:** `Authorization: Bearer <token>`  
+**Guardrails:** Maximum 2,000 entries.
+
+**Request Body:**
+```json
+[
+  ["N64 EverDrive", "00000000-00000000---00", "7"],
+  ["Super Mario 64", "4e534d45", "1"]
+]
+```
+
+---
+
+### `POST /api/v1/command`
+Send a command to the RetroTINK 4K, video switch matrix, or IR emitter.
+
+**Headers:** `Authorization: Bearer <token>`  
+**Guardrails:**
+- Maximum 256 characters.
+- Disallows null bytes or illegal control characters.
+
+**Request Body:**
+```json
+{
+  "command": "remote prof1"
+}
+```
+
+---
+
+### `GET /api/v1/system/backup`
+Download a complete JSON export of all configurations, consoles, and GameDB entries.
+
+**Headers:** `Authorization: Bearer <token>`  
+**Response (200 OK):** Returns `donut_remix_backup.json` attachment.
+
+---
+
+### `POST /api/v1/system/update`
+Securely flash new firmware onto the ESP32.
+
+**Headers:**
+- `Authorization: Bearer <token>`
+- `Content-Type: multipart/form-data`
+
+**Form field:** `update` (binary file).
+
+---
+
+## 3. Backward Compatibility Endpoints
+
+For compatibility with legacy scripts and home automation tools, the following endpoints remain available but are now routed through the security middleware:
+- `POST /cmd`: Accepts plain text commands (authenticated).
+- `GET /getConsoles`, `POST /updateConsoles`
+- `GET /getGameDB`, `POST /updateGameDB`
+- `GET /getVars`, `POST /updateVars`
+- `GET /exportAll`, `POST /importAll`

@@ -1,0 +1,20 @@
+# Build and test binaries
+tests/test_guardrails
+tests/test_security
+tests/test_config
+tests/test_gameid
+*.o
+*.bin
+*.elf
+
+# PlatformIO
+.pio/
+.pioenvs/
+.piolibdeps/
+
+# Editor / OS files
+.DS_Store
+*.swp
+*~
+.vscode/
+.idea/

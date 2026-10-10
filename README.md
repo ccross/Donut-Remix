@@ -1,180 +1,158 @@
-# DonutShop
-is an Arduino Nano ESP32 + OTG adapter that changes profiles for the RetroTink 4K based on gameID. Now also featuring WebCtl. <br />
+# 🍩 Donut Remix
 
-<!-- <p align="center"><img src="./images/1.JPG"><br />
-<p align="center"><img src="./images/2.JPG"><br /> -->
+**Donut Remix** is a modern, security-hardened, contract-first fork of [DonutShop](https://github.com/svirant/DonutShop) for the **Arduino Nano ESP32 (ESP32-S3)** and the **RetroTINK 4K**. It automates RetroTINK 4K profiles based on `gameID` queries across network-connected retro consoles (such as PS1Digital, N64Digital, RetroGEM, and MemCardPro 2) and provides an authenticated WebCtl remote management interface.
 
-<p align="center"><img width="500" src="./images/3.JPG"></p><br />
+---
 
-See it in action: https://youtu.be/ldbfFbKzjh8 <br>
+## Why Donut Remix?
 
-  - Note: In version v0.7.x you can still access this gameID only version at http://donutshop.local/gameid
-    
+The upstream DonutShop project grew popular in late 2026, but subsequent releases shifted towards distributing precompiled closed binary releases (up to `v0.7.27`) without updating the public GNU GPLv3 source repository (which remained stuck at `v0.6.3`).
 
-## DonutShop ft. RT4K WebCtl (work in progress v0.7.x)
- - Requires RT4K v1.75+ fw
- - This version integrates the gameID functionality into the RT4K WebCtl internal test app. It's still very much a work in progress, but I wanted to share the experience thus far.
- - In a nutshell, with WebCtl on DonutShop, you gain:
-    - Dashboard of RT4K status, ability to change Input/Output
-    - Flash latest experimental firmware over Wi-Fi directly from Github
-    - Remote + OSD
-    - Load profiles by double-clicking on the filename, allowing you to quickly try out new profiles.
-    - File Manager with bulk file operations including, copy/move/delete/download,drag & drop uploads.
-      - Load profiles by double-clicking on the filename, allowing you to quickly try out new profiles.
-      - Save live profile to current directory with the option to change name
-      - View .txt & .html files immediately in-browser. Great for reading various guides found on the SD Card image.
-      - Edit & Save .txt files in-browser for immediate changes to various features that use .txt files.
-    - RetroTink "kitchen sink" Diagnostics page
-    - Console to manually run commands
+A security and architecture audit of both the published source code and the `v0.7.27` release binary revealed critical network security risks to home networks:
+- **Zero Authentication:** The web interface, configuration endpoints, and raw hardware command channels were open to anyone on the LAN.
+- **Trivial Remote Code Execution (RCE):** The `/update` web endpoint and `ArduinoOTA` (port 3232) accepted arbitrary firmware flashes without passwords, tokens, or CSRF protection.
+- **Server-Side Request Forgery (SSRF):** Unauthenticated console addresses were continuously polled every 2 seconds without URL validation, enabling attackers to probe internal routers and IoT devices.
+- **Memory Corruption Flaws:** Unchecked loops over incoming JSON arrays caused buffer overflows on fixed RAM allocations.
+- **Thread Concurrency Issues:** Unsynchronized FreeRTOS tasks concurrently mutated shared globals without mutex locks.
 
-<br>
-Dark Theme
-<p align="center"><img src="./images/5.JPG"></p>
-Glazed Theme
-<p align="center"><img src="./images/5c.JPG"><br />
-<p align="center"><img src="./images/6.JPG"><br />
-<p align="center"><img src="./images/7.JPG"><br />
-<p align="center"><img src="./images/8.JPG"><br />
-<p align="center"><img src="./images/9.JPG"><br />
-<p align="center"><img src="./images/10.JPG"><br />
-<p align="center"><img src="./images/11.JPG"><br />
-<p align="center"><img src="./images/12.JPG"><br /></p><br>
+For full technical details, see the complete [SECURITY_AUDIT.md](file:///home/ccross/code/donut-remix/SECURITY_AUDIT.md).
 
-## Updates
-  - "Glazed" is the new daytime theme alternative to the default "Dark" theme.
-  - Firmware Installer only takes a few clicks.
-  - WiP DonutShop ft. RT4K WebCtl now available to experience the new features of the RT4K v1.75+ firmware
-  - .3mf added for printing a case.
-  - NEW Terminal to relay [Remote Control Commands](https://consolemods.org/wiki/AV:RetroTINK-4K#Remote_Control_Commands). Toggle **Keyboard Nav Mode** to navigate the RT4K interface with keyboard keys.
-  - New flash / setup method can now all be done via web browser.
-  - ALL settings are now configured in the Web UI.
-  - New Captive Portal for joining to your home network.
-  - New Settings page allows you to Update Firmware and Load S0 profile if all Consoles are off. 
-  - OTA updates now available. "donutshop" shows up as a Network port in Arduino IDE 2.x
-  - New Web UI!
-  - Detection rates have been sped up!
-    - Unpowered consoles that are DNS address based, timeout after 7 seconds. This is reduced to 2 seconds after a console's first power up.
-      - console DNS addresses will be automatically replaced by IP in order for the 2 second timeout to work.
-    - Quickest if IP address is used versus Domain address.
-      - Ex: http://10.0.1.10/gameid vs http://ps1digital.local/gameid 
+---
 
-## Parts used
-(links help support [RetroRGB!](https://retrorgb.com/))
-  - **OTG Adapter:** The following were tested on 4/27/2026. Not all OTG adapters work.
-     - [Jadebones USB C to USB OTG](https://amzn.to/4cRdskT)
-     - [USB C OTG Adapter, 2 in 1 USB-C to USB](https://a.co/d/07DvAKlc)
-     - IT: [IVIVTOR USB-C OTG Cable Adapter](https://www.amazon.it/dp/B0F8N12YQD) (tested on 8/24/26)
-  - **Nano ESP32:** pick one based on availability
-     - [WaveShare Nano ESP32](https://amzn.to/45FE30D) or from [Aliexpress](https://s.click.aliexpress.com/e/_c3cHQg5V)
-     - [Arduino Nano ESP32](https://amzn.to/4xXGsQm)
-  - **USB-A to C cable**
-     - [Short USB A to USB C Cable](https://amzn.to/4qvE7cV)
+## Key Features in Donut Remix
 
- <br /><br />
+- 🛡️ **Secure by Default:**
+  - Mandatory admin login and session token management (`Authorization: Bearer <token>`).
+  - Salted SHA-256 password storage with timing-safe comparisons.
+  - Brute-force rate limiting (locks out aggressive attackers after 5 failed attempts).
+  - Port 3232 `ArduinoOTA` protected by cryptographic password authentication.
+- 🚦 **Network & Input Guardrails:**
+  - SSRF protection: Rejects loopback (`127.0.0.1`, `localhost`), cloud metadata (`169.254.169.254`), multicast, and dangerous ports.
+  - Command sanitization: Strips null bytes and control escapes before serial/IR dispatch.
+  - Safe bounds checking on all collections (`MAX_CONSOLES` = 16, `MAX_GAMEDB` = 2,000).
+- 📡 **Well-Documented REST API:**
+  - Modern, versioned REST endpoints (`/api/v1/status`, `/api/v1/consoles`, `/api/v1/gamedb`, `/api/v1/command`).
+  - Complete [OpenAPI 3.0 Specification](file:///home/ccross/code/donut-remix/docs/openapi.yaml).
+  - Comprehensive human-readable [API Documentation](file:///home/ccross/code/donut-remix/docs/API.md).
+- 🧩 **Modular Architecture:**
+  - Deconstructed the fragile 6,000-line monolithic `.ino` into clean, decoupled C++ modules with FreeRTOS mutex synchronization.
+- 🎨 **Modern Responsive Web UI:**
+  - Built-in Single Page Application with Dark, Light, and Glazed themes.
+  - Live console ping/test tools, searchable GameID table, interactive RT4K remote, and WebCtl file manager.
+- 🔄 **Backward Compatibility:**
+  - Legacy endpoints (`/cmd`, `/getConsoles`, `/getGameDB`, `/getVars`, `/term`) remain functional for existing automations while being protected by authentication.
 
-## gameID devices currently supported
-| **Device**    | Supported | Notes |
-| ------------- | ------------- |------------- |
-|PS1Digital | yes, confirmed first hand | |
-|N64Digital | yes, confirmed first hand | |
-|RetroGEM N64 | yes | |
-|RetroGEM PS1 | yes | |
-| MemCardPro 2 | yes, for GameCube, PS1, & PS2 | MCP 2.0 firmware requires https instead of http. <br> MCP 3.0 firmware requires disabling "WebUI v2 (Beta)" access and then you can use the http method. Ex: http://10.0.1.52/api/currentState |
-| Fenrir ?| | |
-| more on the way... |  
+---
 
-### LED activity
-| **Color**    | Blinking | On | Notes |
-| ------------- | ------------- |------------- |------------- |
-| 🟠| | Wifi not connected | After 2 minutes of unsuccessfully connecting, "DonutShop_Setup" Wifi AP will reappear to help with reconnection. |
-| 🔵| WiFi active, querying gameID addresses| Longer blinks represent an unsuccessful query of gameID address. Usually a powered off console in the list.| After initial power, no BLUE light means WiFi not found. |
-| 🟢| 1 second blink is gameID match found and SVS profile being sent to RT4K | |  | 
-| 🔴| | Power| No way to control as it's hardwired in. May just need to cover with tape. |
+## Architecture Overview
 
-## Flashing 
-1. Open the [DonutShop Firmware Installer](https://svirant.github.io/DonutShop/install/) in Brave/Chrome/Edge.
-2. Once complete, reconnect the USB cable of the device and continue **Setup** below...
-3. If you get an error, try the Alternative Flashing steps at the bottom of the page.
+```
+donut-remix/
+├── DonutRemix.ino            # Main Arduino sketch & FreeRTOS task coordinator
+├── SECURITY_AUDIT.md         # Full security vulnerability assessment
+├── docs/
+│   ├── API.md                # REST API guide with curl examples
+│   └── openapi.yaml          # OpenAPI 3.0 schema
+├── src/
+│   ├── Config.h / .cpp       # Thread-safe LittleFS configuration manager
+│   ├── Security.h / .cpp     # SHA-256 auth, session tokens, brute-force rate limiter
+│   ├── Guardrails.h / .cpp   # SSRF filter, URL validator, command sanitizer
+│   ├── Devices.h / .cpp      # Hardware abstraction (RT4K CDC/UART, Extron, IR, LED)
+│   ├── GameIDEngine.h / .cpp # Resilient console polling engine with timeout guards
+│   ├── WebServerManager.h/.cpp # HTTP server, REST API v1, legacy endpoints
+│   └── WebUI.h               # Embedded modern single-page web app
+├── tests/                    # C++ unit test suite (runs standalone with g++)
+│   ├── test_guardrails.cpp
+│   ├── test_security.cpp
+│   ├── test_config.cpp
+│   ├── test_gameid.cpp
+│   └── Makefile
+└── platformio.ini            # PlatformIO build configuration
+```
 
-## Setup
-1. Upon reconnecting the USB cable, your board should **Successfully boot DonutShop** and leave you with an ORANGE led.
-2. With your computer or smartphone, join the broadcasted ```DonutShop_Setup``` WiFi to connect it to your home network.
-    - You can now also change the default "donutshop" Hostname. Must follow the rules listed and will have .local appended automatically.
-    - ONLY "a-z", "0-9", and "-" (hyphen) characters are allowed. (edge hyphens not allowed)
-3. Follow the instructions listed and once complete, you should see a BLUE led indicating it's connected to WiFi and looking for addresses to connect to. If the BLUE led does not show, press the RST button one time.
-4. You should now be able to visit http://donutshop.local to confirm WiFi connectivity.
-5. Disconnect the Arduino Nano ESP32 and connect it to the OTG adapter. Connect the OTG assembly to the RT4K and everything should power on.
-6. Reconfirm connectivity to http://donutshop.local and refresh the page after the RT4K has fully booted.
-7. For all updates you can visit the "Firmware Update" section in Settings to "Check for Updates" and auto update to the latest.
-8. There is also a manual update section where you can apply any version's _update .bin file. Updating manually with the _full version will not work.
-   
-## General Setup
+---
 
-For Consoles, quickest if IP address is used versus Domain address:
-  - Ex: http://10.0.1.10/gameid vs http://ps1digital.local/gameid 
+## Hardware Requirements
 
-If you have multiple consoles on when DonutShop is booting, the console furthest down the list wins. If more than 2 consoles are active when one is powered off, the console that was on prior takes over. (Order is remembered.)<br>
+- **Microcontroller:** Arduino Nano ESP32 (ESP32-S3 / NORA-W106) or WaveShare Nano ESP32.
+- **OTG Adapter:** USB-C to USB OTG adapter (e.g. Jadebones or compatible).
+- **Video Processor:** RetroTINK 4K (firmware v1.75+ recommended for full WebCtl and CDC serial).
+- **Optional Switches & IR:** Extron Matrix switch (via UART), MT-Viki, TESmart, IR Emitter (pin D11) for RT5X / OSSC / TV power.
 
-There are a multiple moving parts with this setup, and if you have issues, please use the "DonutShop_usb-only-test.ino". More info in the troublehshooting section at the end.
+---
 
-## Adding gameIDs, Consoles, and other Options
+## Getting Started
 
-The Web UI allows you to live update the Consoles and gameID table. You no longer have to reflash for changes. You can also now import and export your config if anything were to happen and you need to rebuild.
+### 1. Building with Arduino IDE
+1. Open the Arduino IDE (v2.x recommended).
+2. Install the **esp32 by Espressif Systems** board package:
+   - In Settings, add: `https://espressif.github.io/arduino-esp32/package_esp32_index.json`
+3. Install required libraries via Library Manager:
+   - `ArduinoJson` (v7.x)
+   - `WiFiManager` (by tzapu)
+   - `IRremote` (by Armin Joachimsmeyer)
+   - `TinyIRReceiver`
+   - `EspUsbHost`
+4. Under **Tools**, configure:
+   - **Board:** `esp32` -> `Arduino Nano ESP32`
+   - **USB Mode:** `Debug mode (Hardware CDC)`
+   - **Partition Scheme:** `With SPIFFS partition (advanced)` or `Default`
+5. Open `DonutRemix.ino` and select **Sketch -> Upload**.
 
-## WiFi setup
-**ONLY** compatible with **2.4GHz** WiFi APs. Configured during initial setup process. If you need to change SSID or password, the "DonutShop_Setup" AP will reappear after 2 minutes of not being able to connect.
+### 2. Building with PlatformIO
+Run in your terminal:
+```bash
+pio run -e nano_esp32 -t upload
+```
 
-## [Advanced] Programming the Arduino Nano ESP32 with custom .ino changes
-I recommend the [Official Arduino IDE and guide](https://docs.arduino.cc/software/ide-v2/tutorials/getting-started-ide-v2/) if you're unfamiliar with Arduinos. All .ino files used for programming are listed above. The following Libraries will also need to be added in order to Compile successfully.<br />
-- **Add Additional Boards**
-  - In the Arduino IDE open up "Settings", find the section "Additional boards manager URLs:"
-  - Add in: https://espressif.github.io/arduino-esp32/package_esp32_index.json and select "OK"
-1. First, you must have completed the steps shown in the "Flashing" section above at least once before continuing.
-2. "Double click" the RST button right after connecting to your PC/Mac to put into "recovery mode". You'll see a GREEN led strobe if successful.
-3. Open up Donut_Dongle_gameID.ino in the Arduino IDE to make your custom changes.
-4. Under the "Tools" menu, make sure...
-- Board - "esp32" -> "Arduino Nano ESP32" is selected. DO NOT select "Arduino ESP32 Boards" -> "Arduino Nano ESP32"
-- Port - The listed "Serial" port is chosen, not dfu one.
-    - If Donut_Shop is currently running, you should also see a "DonutShop" Network Port that connects via WiFi.
-- Core Debug Level - "None"
-- Partition Scheme - "With SPIFFS partition (advanced)" is chosen
-- Pin Numbering - "By Arduino pin (default)"
-- USB Mode - "Debug mode (Hardware CDC)" / **Important that this is selected!**
-5. To flash the changes, select "Sketch" -> "Upload"
+### 3. Running Unit Tests
+All core logic (security, guardrails, config bounds, GameID parsing) includes a standalone C++17 test suite that compiles on Linux/macOS:
+```bash
+make -C tests test
+```
 
-<br />
+---
 
-## Thank you!
-  - BIG Thanks goes to Mike Chi of RetroTink for early access to the documentation and most importantly the WebCtl test app that made this possible.
-  - The RetroTink Discord for beta testing feedback.
-  - Bob @ RetroRGB for always supporting and being an invaluable resource to the community.
-  - Huge thanks to @CielFricker249 / "Aru" on the RetroTink Discord for the gameID idea and testing of the Donut Dongle project as well!
+## Initial Setup & Login
 
-## TroubleShooting ##
+1. On first boot, connect your smartphone or computer to the temporary WiFi network:  
+   **SSID:** `DonutRemix_Setup` | **Password:** `donutremix`
+2. Configure your home 2.4 GHz WiFi credentials in the captive portal.
+3. Open your browser to:  
+   **`http://donutshop.local`** (or your device's LAN IP).
+4. Default Administrator Credentials:  
+   **Password:** `donutremix`
+5. Visit the **Security & System** tab to change your administrator password immediately.
 
-The 🔵 and 🟢 leds indicate WiFi and usb serial/gameID lookup. This should help diagnose as a first step.
+---
 
-If you are sure of these settings, and it still does not work, try the following to test the usb serial connection:
-  - Configure your Arduino Nano ESP32 with the provided "DonutShop_usb-only-test.ino". This is configured to only load "remote profile 8".
-    - You can change the 8 to 1 - 9 if needed.
-  - Verify that everything is connected with your OTG adapter and has power.
-  - Press the reset button on top of the device and within a couple of seconds it should load the remote profile.
+## REST API Quick Reference
 
-    If this works, then there must be a wifi connectivity issue somewhere. 
+Authenticate:
+```bash
+curl -X POST http://donutshop.local/api/v1/auth/login \
+     -H "Content-Type: application/json" \
+     -d '{"password": "yourPassword"}'
+# Returns: {"token": "4a2b9f01e7c538209ad43bf1e02947ac", "expiresIn": 86400}
+```
 
-    Here is a video of the "usb only test" being performed: https://www.youtube.com/watch?v=XP7OSW7X0DQ
+Check telemetry:
+```bash
+curl http://donutshop.local/api/v1/status
+```
 
-## Alternative Flashing Steps
-1. Open [ESP Tool](https://espressif.github.io/esptool-js/) in Chrome, Brave, or Edge
-2. Connect your Arduino Nano ESP32 via USB directly to your PC or Mac (not through a usb-hub) and double click the Nano's RST button immediately following to enter **recovery mode** (a GREEN led will strobe when successful)
-3. Clicking **Connect** opens up a selection menu and you should see something like (depending on OS and Nano brand) Nano ESP32 or TinyUSB
-4. With the **Connect menu** still open, single click the Nano button once more and quickly select the new device named USB JTAG; click **Connect**
-    - If it disappears, click the Nano button again for it to return. Be faster this time! ;)
-5. If Step 4 is not working, In the **Connect** menu, select "Nano ESP32" or "Tiny USB" and click Connect.
-    - Refresh the page and click **Connect** once more. You should now see USB JTAG available for **Connect**
-6. Click **Erase Flash** to format your device (required for LittleFS)
-7. Download the latest files from the Github Releases section.
-8. Set Flash Address to **0x0** and Choose the file ```DonutShop_vX.X.X_full.bin```
-9. Click **Add File**, set the next Flash Address to **0xF70000**, Choose ```nora_recovery.bin```
-10. Click **Program**
-11. Once complete, reconnect the USB cable of the device and continue **Setup** below...
+Switch profile:
+```bash
+curl -X POST http://donutshop.local/api/v1/command \
+     -H "Authorization: Bearer 4a2b9f01e7c538209ad43bf1e02947ac" \
+     -H "Content-Type: application/json" \
+     -d '{"command": "remote prof1"}'
+```
+
+For full documentation, see [docs/API.md](file:///home/ccross/code/donut-remix/docs/API.md) and [docs/openapi.yaml](file:///home/ccross/code/donut-remix/docs/openapi.yaml).
+
+---
+
+## License
+
+Licensed under the [GNU General Public License v3.0](file:///home/ccross/code/donut-remix/LICENSE).

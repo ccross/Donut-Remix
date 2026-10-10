@@ -1,0 +1,68 @@
+#pragma once
+
+#include <memory>
+#include <string>
+#include "Config.h"
+#include "Security.h"
+#include "Devices.h"
+#include "GameIDEngine.h"
+
+#ifdef ARDUINO
+#include <WebServer.h>
+#endif
+
+namespace DonutRemix {
+
+class WebServerManager {
+public:
+    WebServerManager(ConfigManager& config, SecurityManager& security, DeviceManager& devices, GameIDEngine& gameId);
+
+    void begin();
+    void handleClient();
+
+private:
+    ConfigManager& m_config;
+    SecurityManager& m_security;
+    DeviceManager& m_devices;
+    GameIDEngine& m_gameId;
+
+#ifdef ARDUINO
+    WebServer m_server;
+
+    // Middleware & Security
+    void setSecurityHeaders();
+    bool authenticateRequest();
+    std::string getClientIp();
+
+    // Route Handlers
+    void handleRoot();
+    void handleAuthLogin();
+    void handleAuthLogout();
+    void handleAuthStatus();
+    void handleGetStatus();
+    void handleGetConsoles();
+    void handlePostConsoles();
+    void handleGetGameDB();
+    void handlePostGameDB();
+    void handleGetVars();
+    void handlePostVars();
+    void handlePostCommand();
+    void handleSystemBackup();
+    void handleSystemRestore();
+    void handleFirmwareUpdate();
+    void handleFirmwareUpload();
+
+    // Legacy & WebCtl Compatibility Handlers
+    void handleLegacyCmd();
+    void handleWebCtlInfo();
+    void handleWebCtlStatus();
+    void handleWebCtlCommand();
+    void handleWebCtlFiles();
+    void handleWebCtlMkdir();
+    void handleWebCtlMove();
+    void handleWebCtlOptions();
+    void handleWebCtlTheme();
+#endif
+};
+
+} // namespace DonutRemix

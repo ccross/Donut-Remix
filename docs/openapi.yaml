@@ -1,0 +1,321 @@
+openapi: 3.0.3
+info:
+  title: Donut Remix REST API
+  description: Modern, secure REST API for RetroTINK 4K profile automation, serial control, and console GameID detection.
+  version: 1.0.0
+  license:
+    name: GNU General Public License v3.0
+    url: https://www.gnu.org/licenses/gpl-3.0.en.html
+
+servers:
+  - url: http://donutshop.local
+    description: Default local mDNS hostname
+  - url: http://{ip}
+    description: Direct device IP address
+    variables:
+      ip:
+        default: 192.168.1.100
+        description: LAN IP of Donut Remix ESP32
+
+paths:
+  /api/v1/auth/login:
+    post:
+      summary: Authenticate Admin Session
+      description: Logs in using the admin password and generates an authenticated session token. Subject to brute-force rate limiting (5 attempts per minute).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password:
+                  type: string
+                  example: "donutremix"
+      responses:
+        '200':
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    example: "4a2b9f01e7c538209ad43bf1e02947ac"
+                  expiresIn:
+                    type: integer
+                    example: 86400
+        '401':
+          description: Invalid password
+        '429':
+          description: Rate limited due to too many failed attempts
+
+  /api/v1/auth/logout:
+    post:
+      summary: Invalidate Session
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Session revoked
+
+  /api/v1/auth/status:
+    get:
+      summary: Authentication Policy Status
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  authRequired:
+                    type: boolean
+
+  /api/v1/status:
+    get:
+      summary: System & RT4K Telemetry
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  uptime:
+                    type: integer
+                    description: Uptime in seconds
+                  active_profile:
+                    type: integer
+                    description: Currently loaded SVS profile or negative remote profile
+                  active_console:
+                    type: string
+                    description: Console currently driving profile changes
+                  rt4k_status:
+                    type: string
+
+  /api/v1/consoles:
+    get:
+      summary: List Configured Consoles
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Console'
+    post:
+      summary: Update Consoles Configuration
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              maxItems: 16
+              items:
+                $ref: '#/components/schemas/ConsoleInput'
+      responses:
+        '200':
+          description: Consoles saved successfully
+        '400':
+          description: Validation error or URL rejected by guardrails
+
+  /api/v1/gamedb:
+    get:
+      summary: List GameID Database Mappings
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: array
+                  items:
+                    type: string
+    post:
+      summary: Update GameID Database Mappings
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              maxItems: 2000
+              items:
+                $ref: '#/components/schemas/GameDBEntry'
+      responses:
+        '200':
+          description: Game database updated
+
+  /api/v1/vars:
+    get:
+      summary: Get System Variables
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemVars'
+    post:
+      summary: Update System Variables
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SystemVars'
+      responses:
+        '200':
+          description: System variables updated
+
+  /api/v1/command:
+    post:
+      summary: Send Command to RT4K, Matrix, or IR
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [command]
+              properties:
+                command:
+                  type: string
+                  example: "remote prof1"
+      responses:
+        '200':
+          description: Command dispatched
+        '400':
+          description: Command rejected by sanitization guardrails
+
+  /api/v1/system/backup:
+    get:
+      summary: Export Configuration Backup
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: JSON configuration dump
+
+  /api/v1/system/restore:
+    post:
+      summary: Restore Configuration Backup
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Backup restored
+
+  /api/v1/system/update:
+    post:
+      summary: Authenticated Firmware Flash
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                update:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Flash completed; device rebooting
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-Session-Token
+
+  schemas:
+    Console:
+      type: object
+      properties:
+        Desc:
+          type: string
+        Address:
+          type: string
+        DefaultProf:
+          type: integer
+        Enabled:
+          type: boolean
+        On:
+          type: boolean
+        King:
+          type: boolean
+
+    ConsoleInput:
+      type: object
+      required: [Desc, Address, DefaultProf]
+      properties:
+        Desc:
+          type: string
+          maxLength: 64
+        Address:
+          type: string
+          maxLength: 256
+        DefaultProf:
+          type: integer
+          minimum: -12
+          maximum: 999
+        Enabled:
+          type: boolean
+          default: true
+
+    GameDBEntry:
+      type: object
+      required: [name, gameID, profile]
+      properties:
+        name:
+          type: string
+        gameID:
+          type: string
+        profile:
+          type: string
+
+    SystemVars:
+      type: object
+      properties:
+        S0:
+          type: boolean
+        SRS:
+          type: integer
+        offset:
+          type: integer
+        hostname:
+          type: string
