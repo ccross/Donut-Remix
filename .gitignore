@@ -1,4 +1,6 @@
 # Build and test binaries
+build/
+DonutRemix/build/
 tests/test_guardrails
 tests/test_security
 tests/test_config
