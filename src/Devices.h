@@ -5,8 +5,11 @@
 #include <cstdint>
 
 #ifdef ARDUINO
+#ifndef USB_MODE
+#define USB_MODE 1
+#endif
 #include <Arduino.h>
-#if defined(USB_MODE) && USB_MODE
+#if USB_MODE
 #include <EspUsbHost.h>
 #endif
 #endif
@@ -62,7 +65,7 @@ private:
     std::mutex m_ioMutex;
     int m_currentProfile{0};
     int m_prevProfile{0};
-    uint32_t m_rt4kBaud{115200};
+    uint32_t m_rt4kBaud{9600};
 
     bool m_serialLocked{false};
     std::string m_lockOwner;

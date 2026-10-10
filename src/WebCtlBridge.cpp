@@ -81,14 +81,15 @@ void WebCtlBridge::handleControlJson(uint8_t clientNum, const std::string& jsonS
     const char* op = doc["op"] | "";
 
     if (strcmp(op, "hello") == 0) {
+        bool usb = m_devices.isUsbConnected();
         JsonDocument res;
         res["type"] = "rt4k-bridge";
         res["op"] = "hello";
         res["ok"] = true;
-        res["baud"] = m_devices.getRT4KBaud();
+        res["baud"] = usb ? 2000000 : m_devices.getRT4KBaud();
         res["preferredHd15Baud"] = 2000000;
         res["hostname"] = "donutshop";
-        res["usbConnected"] = m_devices.isUsbConnected();
+        res["usbConnected"] = usb;
         String out;
         serializeJson(res, out);
         m_wsServer.sendTXT(clientNum, out.c_str());
@@ -132,21 +133,51 @@ void WebCtlBridge::handleControlJson(uint8_t clientNum, const std::string& jsonS
         serializeJson(res, out);
         m_wsServer.sendTXT(clientNum, out.c_str());
     } else if (strcmp(op, "detectBaud") == 0) {
+        // Probe common RT4K baud rates: 2M, 9600, 38400, 115200
+        uint32_t candidateBauds[] = {2000000, 9600, 38400, 115200};
+        uint32_t foundBaud = 0;
+        uint8_t probeBuf[128];
+
+        for (uint32_t b : candidateBauds) {
+            m_devices.setRT4KBaud(b);
+            while (m_devices.readRT4KBytes(probeBuf, sizeof(probeBuf)) > 0); // flush
+            m_devices.writeRT4KBytes((const uint8_t*)"\rver\r\n", 6);
+            delay(120);
+            size_t n = m_devices.readRT4KBytes(probeBuf, sizeof(probeBuf) - 1);
+            if (n > 0) {
+                probeBuf[n] = '\0';
+                std::string resp((char*)probeBuf);
+                if (resp.find("FW") != std::string::npos ||
+                    resp.find("Build") != std::string::npos ||
+                    resp.find("RetroTink") != std::string::npos ||
+                    resp.find("RetroTINK") != std::string::npos) {
+                    foundBaud = b;
+                    break;
+                }
+            }
+        }
+
+        if (foundBaud == 0) {
+            foundBaud = 9600;
+            m_devices.setRT4KBaud(foundBaud);
+        }
+
         JsonDocument res;
         res["type"] = "rt4k-bridge";
         res["op"] = "detectBaud";
         res["ok"] = true;
-        res["baud"] = m_devices.getRT4KBaud();
+        res["baud"] = foundBaud;
         String out;
         serializeJson(res, out);
         m_wsServer.sendTXT(clientNum, out.c_str());
     } else if (strcmp(op, "wake") == 0) {
+        m_devices.setRT4KBaud(9600);
         m_devices.wakeRT4K();
         JsonDocument res;
         res["type"] = "rt4k-bridge";
         res["op"] = "wake";
         res["ok"] = true;
-        res["baud"] = m_devices.getRT4KBaud();
+        res["baud"] = 9600;
         res["usbConnected"] = m_devices.isUsbConnected();
         String out;
         serializeJson(res, out);

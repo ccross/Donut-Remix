@@ -55,6 +55,11 @@ void setup() {
     // 1. Initialize Hardware & LED status
     deviceMgr.init();
 
+#if USB_MODE
+    CdcSerial.begin(2000000);
+    usbHost.begin();
+#endif
+
     // 2. Initialize LittleFS
     if (!LittleFS.begin(true)) {
         Serial.println(F("[ERROR] LittleFS mount failed!"));
@@ -96,12 +101,6 @@ void setup() {
 
     // 7. Start WebCtl WebSocket Bridge on Port 81
     wsBridge.begin();
-
-#if USB_MODE
-    // Only switch USB PHY to Host mode if WiFi is connected or actively on OTG
-    CdcSerial.begin(2000000);
-    usbHost.begin();
-#endif
 
     // 8. Spawn GameID Polling Task
     xTaskCreate(gameIdTask, "GameIDTask", 8192, NULL, 1, NULL);

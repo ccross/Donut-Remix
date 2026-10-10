@@ -194,9 +194,7 @@ void DeviceManager::writeRT4KBytes(const uint8_t* data, size_t len) {
 #ifdef ARDUINO
     Serial0.write(data, len);
 #if defined(USB_MODE) && USB_MODE
-    if (CdcSerial.connected()) {
-        CdcSerial.write(data, len);
-    }
+    CdcSerial.write(data, len);
 #endif
 #else
     (void)data;
@@ -208,12 +206,18 @@ size_t DeviceManager::readRT4KBytes(uint8_t* buffer, size_t maxLen) {
     std::lock_guard<std::mutex> lock(m_ioMutex);
 #ifdef ARDUINO
 #if defined(USB_MODE) && USB_MODE
-    if (CdcSerial.connected() && CdcSerial.available()) {
-        return CdcSerial.readBytes(buffer, maxLen);
+    int avail = CdcSerial.available();
+    if (avail > 0) {
+        size_t toRead = (size_t)avail;
+        if (toRead > maxLen) toRead = maxLen;
+        return CdcSerial.readBytes(buffer, toRead);
     }
 #endif
-    if (Serial0.available()) {
-        return Serial0.readBytes(buffer, maxLen);
+    int avail0 = Serial0.available();
+    if (avail0 > 0) {
+        size_t toRead = (size_t)avail0;
+        if (toRead > maxLen) toRead = maxLen;
+        return Serial0.readBytes(buffer, toRead);
     }
     return 0;
 #else
@@ -229,16 +233,14 @@ void DeviceManager::setRT4KBaud(uint32_t baud) {
 #ifdef ARDUINO
     Serial0.begin(baud);
 #if defined(USB_MODE) && USB_MODE
-    if (CdcSerial.connected()) {
-        CdcSerial.begin(baud);
-    }
+    CdcSerial.setBaudRate(baud);
 #endif
 #endif
 }
 
 bool DeviceManager::isUsbConnected() const {
 #if defined(USB_MODE) && USB_MODE
-    return CdcSerial.connected();
+    return CdcSerial.connected() || usbHost.ready();
 #else
     return false;
 #endif
@@ -249,9 +251,7 @@ void DeviceManager::wakeRT4K() {
 #ifdef ARDUINO
     Serial0.print("\rpwr on\r\n");
 #if defined(USB_MODE) && USB_MODE
-    if (CdcSerial.connected()) {
-        CdcSerial.print("\rpwr on\r\n");
-    }
+    CdcSerial.print("\rpwr on\r\n");
 #endif
 #else
     std::cout << "[Device Mock RT4K] Wake sent" << std::endl;

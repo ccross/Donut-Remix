@@ -7,6 +7,11 @@
 #ifdef ARDUINO
 #include <ArduinoJson.h>
 #include <Update.h>
+#if defined(USB_MODE) && USB_MODE
+#include <EspUsbHost.h>
+extern EspUsbHost usbHost;
+extern EspUsbHostCdcSerial CdcSerial;
+#endif
 #endif
 
 namespace DonutRemix {
@@ -28,6 +33,7 @@ void WebServerManager::begin() {
     m_server.on("/gameid", HTTP_GET, [this]() { handleGameID(); });
     m_server.on("/term", HTTP_GET, [this]() { handleGameID(); });
     m_server.on("/donut-memory", HTTP_GET, [this]() { handleDonutMemory(); });
+    m_server.on("/favicon.ico", HTTP_GET, [this]() { m_server.send(204); });
 
     // REST API v1
     m_server.on("/api/v1/auth/login", HTTP_POST, [this]() { handleAuthLogin(); });
@@ -461,6 +467,12 @@ void WebServerManager::handleWebCtlInfo() {
     doc["hardware"] = "Arduino Nano ESP32";
     doc["baud"] = 2000000;
     doc["rt4k"] = "connected";
+#if defined(USB_MODE) && USB_MODE
+    doc["usbHost_ready"] = ::usbHost.ready();
+    doc["cdc_connected"] = ::CdcSerial.connected();
+    doc["usb_lastError"] = ::usbHost.lastError();
+    doc["usb_lastErrorName"] = ::usbHost.lastErrorName();
+#endif
     String out;
     serializeJson(doc, out);
     m_server.send(200, "application/json", out);
