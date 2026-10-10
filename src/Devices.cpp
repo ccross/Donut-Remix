@@ -214,6 +214,9 @@ void DeviceManager::writeRT4KBytes(const uint8_t* data, size_t len) {
 #ifdef ARDUINO
 #if defined(USB_MODE) && USB_MODE
     if (CdcSerial.connected()) {
+        if (!usbHost.serialWriteQueueReady()) {
+            usbHost.serialWriteQueueBegin(4, 2060);
+        }
         CdcSerial.write(data, len);
         return;
     }
@@ -222,6 +225,19 @@ void DeviceManager::writeRT4KBytes(const uint8_t* data, size_t len) {
 #else
     (void)data;
     (void)len;
+#endif
+}
+
+void DeviceManager::flushRT4K() {
+    std::lock_guard<std::mutex> lock(m_ioMutex);
+#ifdef ARDUINO
+#if defined(USB_MODE) && USB_MODE
+    if (CdcSerial.connected()) {
+        CdcSerial.flush();
+        return;
+    }
+#endif
+    Serial0.flush();
 #endif
 }
 

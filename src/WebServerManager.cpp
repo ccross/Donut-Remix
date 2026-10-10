@@ -606,7 +606,7 @@ void WebServerManager::handlePutUpload() {
                 session.bytesSent += session.chunkLen;
                 session.framesSent++;
                 session.chunkLen = 0;
-                delay(3);
+                delay(50);
             }
         }
     } else if (raw.status == RAW_END) {
@@ -619,7 +619,7 @@ void WebServerManager::handlePutUpload() {
             session.bytesSent += session.chunkLen;
             session.framesSent++;
             session.chunkLen = 0;
-            delay(3);
+            delay(50);
         }
 
         // Send zero-length EOF frame
@@ -629,6 +629,7 @@ void WebServerManager::handlePutUpload() {
             return;
         }
         session.framesSent++;
+        m_devices.flushRT4K();
     } else if (raw.status == RAW_ABORTED) {
         session.lastError = "Upload aborted by client";
     }

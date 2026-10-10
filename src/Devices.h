@@ -56,6 +56,7 @@ public:
 
     // Direct RT4K Byte Stream for WebCtl Bridge
     void writeRT4KBytes(const uint8_t* data, size_t len);
+    void flushRT4K();
     size_t readRT4KBytes(uint8_t* buffer, size_t maxLen);
     void setRT4KBaud(uint32_t baud);
     uint32_t getRT4KBaud() const { return m_rt4kBaud; }
