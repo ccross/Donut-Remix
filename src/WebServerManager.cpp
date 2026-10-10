@@ -606,7 +606,19 @@ void WebServerManager::handlePutUpload() {
                 session.bytesSent += session.chunkLen;
                 session.framesSent++;
                 session.chunkLen = 0;
-                delay(50);
+
+                // Broadcast progress over WebSocket every 64KB (32 frames)
+                if ((session.framesSent % 32) == 0 || session.bytesSent == session.expectedSize) {
+                    auto cb = m_devices.getHttpPutProgressCallback();
+                    if (cb) cb(session.token, session.bytesSent, session.expectedSize);
+                }
+
+                // Adaptive pacing: RT4K SD cluster writes take 50-70ms, with occasional
+                // SD flash GC/erase taking up to ~117ms. Pausing 120ms at 32KB cluster
+                // boundaries lets the SD write complete before the next frame arrives.
+                // 65ms normal pacing guarantees RT4K CDC RX FIFO never overflows.
+                bool isClusterBoundary = ((session.bytesSent % 32768) == 0);
+                delay(isClusterBoundary ? 120 : 65);
             }
         }
     } else if (raw.status == RAW_END) {
@@ -619,7 +631,7 @@ void WebServerManager::handlePutUpload() {
             session.bytesSent += session.chunkLen;
             session.framesSent++;
             session.chunkLen = 0;
-            delay(50);
+            delay(65);
         }
 
         // Send zero-length EOF frame
@@ -629,7 +641,11 @@ void WebServerManager::handlePutUpload() {
             return;
         }
         session.framesSent++;
+        delay(50);
         m_devices.flushRT4K();
+
+        auto cb = m_devices.getHttpPutProgressCallback();
+        if (cb) cb(session.token, session.bytesSent, session.expectedSize);
     } else if (raw.status == RAW_ABORTED) {
         session.lastError = "Upload aborted by client";
     }

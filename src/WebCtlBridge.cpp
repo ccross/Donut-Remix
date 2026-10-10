@@ -20,6 +20,17 @@ void WebCtlBridge::begin() {
     m_wsServer.onEvent([this](uint8_t num, WStype_t type, uint8_t * payload, size_t length) {
         this->onWebSocketEvent(num, type, payload, length);
     });
+    m_devices.setHttpPutProgressCallback([this](uint32_t token, size_t sent, size_t total) {
+        JsonDocument prog;
+        prog["type"] = "rt4k-bridge";
+        prog["op"] = "httpTxProgress";
+        prog["token"] = token;
+        prog["bytes"] = (uint32_t)sent;
+        prog["total"] = (uint32_t)total;
+        String s;
+        serializeJson(prog, s);
+        m_wsServer.broadcastTXT(s.c_str());
+    });
 #endif
 }
 
@@ -237,7 +248,7 @@ void WebCtlBridge::handleControlJson(uint8_t clientNum, const std::string& jsonS
         res["bulk"] = "http";
         res["port"] = 80;
         res["token"] = token;
-        res["localAck"] = localAck;
+        res["localAck"] = true; // Signal browser to disable upload timeout and listen to httpTxProgress
         res["payload"] = payload;
         String out;
         serializeJson(res, out);

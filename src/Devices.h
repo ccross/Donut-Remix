@@ -3,6 +3,7 @@
 #include <string>
 #include <mutex>
 #include <cstdint>
+#include <functional>
 
 #ifdef ARDUINO
 #ifndef USB_MODE
@@ -85,6 +86,10 @@ public:
     HttpPutSession& getHttpPutSessionRef() { return m_putSession; }
     bool sendRtl1Frame(uint16_t nonce, uint8_t type, uint8_t seq, const uint8_t* payload, size_t len);
 
+    using HttpPutProgressCallback = std::function<void(uint32_t token, size_t sent, size_t total)>;
+    void setHttpPutProgressCallback(HttpPutProgressCallback cb) { m_putProgressCb = cb; }
+    HttpPutProgressCallback getHttpPutProgressCallback() const { return m_putProgressCb; }
+
     int getCurrentProfile() const { return m_currentProfile; }
 
 private:
@@ -98,6 +103,7 @@ private:
     uint32_t m_lockToken{0};
 
     HttpPutSession m_putSession;
+    HttpPutProgressCallback m_putProgressCb;
 };
 
 } // namespace DonutRemix
