@@ -35,7 +35,32 @@ void WebServerManager::begin() {
     m_server.on("/donut-memory", HTTP_GET, [this]() { handleDonutMemory(); });
     m_server.on("/favicon.ico", HTTP_GET, [this]() { m_server.send(204); });
     m_server.on("/rt4k-fw-meta", HTTP_GET, [this]() {
-        m_server.send(200, "application/json", "{\"ok\":true,\"version\":\"1.95.0\",\"versions\":[\"1.95.0\"]}");
+        String ver = m_server.hasArg("version") ? m_server.arg("version") : "1.96.0";
+        JsonDocument doc;
+        doc["ok"] = true;
+        doc["updater"] = "rt4kup.bin";
+        JsonArray vers = doc["versions"].to<JsonArray>();
+        vers.add("1.96.0");
+        vers.add("1.95.0");
+        vers.add("1.94.0");
+        vers.add("1.93.2");
+        vers.add("1.93.1");
+        vers.add("1.93.0");
+
+        if (ver == "1.95.0") {
+            doc["version"] = "1.95.0";
+            doc["packageUrl"] = "https://cdn.jsdelivr.net/gh/retrotink-llc/firmware@main/RetroTINK-4K/Experimental/rt4k_1950.zip";
+            doc["sha256"] = "28e46bd713d594dd798a42ec2bfe03bdbc258326fdea19c0353730b60844c564";
+            doc["changelog"] = "Version 1.95.0 (2026-10-08)";
+        } else {
+            doc["version"] = "1.96.0";
+            doc["packageUrl"] = "https://cdn.jsdelivr.net/gh/retrotink-llc/firmware@main/RetroTINK-4K/Experimental/rt4k_1960.zip";
+            doc["sha256"] = "0ad8c8c0fa5597ee054d87f45b882e3fc47c76a5fb26089678527aec5c71c8e5";
+            doc["changelog"] = "Version 1.96.0 (2026-10-09):\n- Second-generation inverse telecine engine for RT4KPRO\n- Dual FPGA and MCU detection state machines for fast lock / unlock\n- Significantly improved inverse 3:2 and 2:2 reliability";
+        }
+        String out;
+        serializeJson(doc, out);
+        m_server.send(200, "application/json", out);
     });
 
     // REST API v1
