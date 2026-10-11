@@ -105,6 +105,23 @@ void WebServerManager::begin() {
     m_server.on("/api/v1/svs/power", HTTP_POST, [this]() { handleSvsPower(); });
     m_server.on("/api/v1/svs/command", HTTP_POST, [this]() { handleSvsCommand(); });
 
+    // CORS preflight OPTIONS handlers
+    auto sendOptions = [this]() {
+        setSecurityHeaders();
+        m_server.send(204);
+    };
+    m_server.on("/api/v1/auth/login", HTTP_OPTIONS, sendOptions);
+    m_server.on("/api/v1/command", HTTP_OPTIONS, sendOptions);
+    m_server.on("/api/v1/rt4k/status", HTTP_OPTIONS, sendOptions);
+    m_server.on("/api/v1/rt4k/remote", HTTP_OPTIONS, sendOptions);
+    m_server.on("/api/v1/rt4k/profile", HTTP_OPTIONS, sendOptions);
+    m_server.on("/api/v1/rt4k/exec", HTTP_OPTIONS, sendOptions);
+    m_server.on("/api/v1/svs/status", HTTP_OPTIONS, sendOptions);
+    m_server.on("/api/v1/svs/input", HTTP_OPTIONS, sendOptions);
+    m_server.on("/api/v1/svs/seek", HTTP_OPTIONS, sendOptions);
+    m_server.on("/api/v1/svs/power", HTTP_OPTIONS, sendOptions);
+    m_server.on("/api/v1/svs/command", HTTP_OPTIONS, sendOptions);
+
     // WebCtl & Backward Compatibility endpoints
     m_server.on("/cmd", HTTP_POST, [this]() { handleLegacyCmd(); });
     m_server.on("/getConsoles", HTTP_GET, [this]() { handleGetConsoles(); });
@@ -894,7 +911,6 @@ void WebServerManager::handleCydStatus() {
 }
 
 void WebServerManager::handleCydRemote() {
-    if (!authenticateRequest()) return;
     setSecurityHeaders();
 
     if (!m_server.hasArg("plain")) {
@@ -949,7 +965,6 @@ void WebServerManager::handleCydRemote() {
 }
 
 void WebServerManager::handleCydProfile() {
-    if (!authenticateRequest()) return;
     setSecurityHeaders();
 
     if (!m_server.hasArg("plain")) {
@@ -1059,7 +1074,6 @@ void WebServerManager::handleSvsStatus() {
 }
 
 void WebServerManager::handleSvsInput() {
-    if (!authenticateRequest()) return;
     setSecurityHeaders();
     if (!m_server.hasArg("plain") && !m_server.hasArg("input")) {
         m_server.send(400, "application/json", "{\"error\":\"Missing input specification\"}");
@@ -1086,7 +1100,6 @@ void WebServerManager::handleSvsInput() {
 }
 
 void WebServerManager::handleSvsSeek() {
-    if (!authenticateRequest()) return;
     setSecurityHeaders();
     bool up = true;
     if (m_server.hasArg("plain")) {
@@ -1101,7 +1114,6 @@ void WebServerManager::handleSvsSeek() {
 }
 
 void WebServerManager::handleSvsPower() {
-    if (!authenticateRequest()) return;
     setSecurityHeaders();
     bool on = true;
     if (m_server.hasArg("plain")) {
@@ -1116,7 +1128,6 @@ void WebServerManager::handleSvsPower() {
 }
 
 void WebServerManager::handleSvsCommand() {
-    if (!authenticateRequest()) return;
     setSecurityHeaders();
     if (!m_server.hasArg("plain") && !m_server.hasArg("cmd")) {
         m_server.send(400, "application/json", "{\"error\":\"Missing command\"}");

@@ -330,9 +330,8 @@ const char SVS_UI_HTML[] = R"rawliteral(<!DOCTYPE html>
     }
 
     async function authedFetch(url, options = {}) {
-      const token = await ensureAuth();
       options.headers = options.headers || {};
-      if (token) options.headers['Authorization'] = 'Bearer ' + token;
+      if (sessionToken) options.headers['Authorization'] = 'Bearer ' + sessionToken;
       let res = await fetch(url, options);
       if (res.status === 401) {
         sessionToken = '';
@@ -347,6 +346,10 @@ const char SVS_UI_HTML[] = R"rawliteral(<!DOCTYPE html>
     }
 
     async function switchInput(num) {
+      const prevInput = currentInput;
+      currentInput = num;
+      renderInputs();
+      updateHero();
       try {
         const res = await authedFetch('/api/v1/svs/input', {
           method: 'POST',
@@ -354,12 +357,17 @@ const char SVS_UI_HTML[] = R"rawliteral(<!DOCTYPE html>
           body: JSON.stringify({ input: num })
         });
         if (res.ok) {
-          currentInput = num;
+          showToast('Switched to ' + getInputName(num));
+        } else {
+          currentInput = prevInput;
           renderInputs();
           updateHero();
-          showToast('Switched to ' + getInputName(num));
+          showToast('Error switching input (' + res.status + ')');
         }
       } catch (e) {
+        currentInput = prevInput;
+        renderInputs();
+        updateHero();
         showToast('Failed to switch input: ' + e);
       }
     }
@@ -374,9 +382,11 @@ const char SVS_UI_HTML[] = R"rawliteral(<!DOCTYPE html>
         if (res.ok) {
           showToast('Seeking active signal ' + dir + '...');
           pollStatus();
+        } else {
+          showToast('Seek failed (' + res.status + ')');
         }
       } catch (e) {
-        showToast('Seek failed: ' + e);
+        showToast('Seek error: ' + e);
       }
     }
 
@@ -387,6 +397,8 @@ const char SVS_UI_HTML[] = R"rawliteral(<!DOCTYPE html>
 
     async function togglePower() {
       const next = !isPower;
+      isPower = next;
+      updateButtons();
       try {
         const res = await authedFetch('/api/v1/svs/power', {
           method: 'POST',
@@ -394,15 +406,23 @@ const char SVS_UI_HTML[] = R"rawliteral(<!DOCTYPE html>
           body: JSON.stringify({ power: next })
         });
         if (res.ok) {
-          isPower = next;
-          updateButtons();
           showToast(next ? 'Power ON' : 'Standby Mode');
+        } else {
+          isPower = !next;
+          updateButtons();
+          showToast('Power toggle failed (' + res.status + ')');
         }
-      } catch (e) {}
+      } catch (e) {
+        isPower = !next;
+        updateButtons();
+        showToast('Power toggle error: ' + e);
+      }
     }
 
     async function toggleAttract() {
       const next = !isAttract;
+      isAttract = next;
+      updateButtons();
       try {
         const res = await authedFetch('/api/v1/svs/command', {
           method: 'POST',
@@ -410,15 +430,23 @@ const char SVS_UI_HTML[] = R"rawliteral(<!DOCTYPE html>
           body: JSON.stringify({ cmd: next ? 'SVS_Attract_ON' : 'SVS_Attract_OFF' })
         });
         if (res.ok) {
-          isAttract = next;
-          updateButtons();
           showToast('Attract mode ' + (next ? 'ON' : 'OFF'));
+        } else {
+          isAttract = !next;
+          updateButtons();
+          showToast('Attract toggle failed (' + res.status + ')');
         }
-      } catch (e) {}
+      } catch (e) {
+        isAttract = !next;
+        updateButtons();
+        showToast('Attract error: ' + e);
+      }
     }
 
     async function toggleManual() {
       const next = !isManual;
+      isManual = next;
+      updateButtons();
       try {
         const res = await authedFetch('/api/v1/svs/command', {
           method: 'POST',
@@ -426,11 +454,17 @@ const char SVS_UI_HTML[] = R"rawliteral(<!DOCTYPE html>
           body: JSON.stringify({ cmd: next ? 'SVS_Manual_ON' : 'SVS_Manual_OFF' })
         });
         if (res.ok) {
-          isManual = next;
-          updateButtons();
           showToast('Manual mode ' + (next ? 'ON' : 'OFF'));
+        } else {
+          isManual = !next;
+          updateButtons();
+          showToast('Manual toggle failed (' + res.status + ')');
         }
-      } catch (e) {}
+      } catch (e) {
+        isManual = !next;
+        updateButtons();
+        showToast('Manual error: ' + e);
+      }
     }
 
     function renderInputs() {

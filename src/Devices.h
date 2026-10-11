@@ -77,6 +77,7 @@ public:
     void setSvsCompRgb(bool on);
     void parseSvsLine(const std::string& line);
     bool isSvsConnected() const { return m_svsConnected; }
+    void setSvsConnected(bool connected) { m_svsConnected = connected; }
     uint8_t getSvsCurrentInput() const { return m_svsCurrentInput; }
     uint8_t getSvsTotalInputs() const { return m_svsTotalInputs; }
     std::string getSvsFirmware() const { return m_svsFirmware; }

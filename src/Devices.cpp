@@ -371,10 +371,10 @@ void DeviceManager::setRT4KBaud(uint32_t baud) {
 #ifdef ARDUINO
     Serial0.begin(baud);
 #if defined(USB_MODE) && USB_MODE
-    if (!CdcSerial.connected()) {
-        CdcSerial.setBaudRate(baud);
-    } else {
-        CdcSerial.setBaudRate(2000000);
+    CdcSerial.setBaudRate(baud);
+    if (baud == 9600) {
+        CdcSerial.setDtr(true);
+        CdcSerial.setRts(true);
     }
 #endif
 #endif
@@ -403,14 +403,11 @@ void DeviceManager::wakeRT4K() {
 void DeviceManager::sendSvsCommand(const std::string& cmd) {
     std::lock_guard<std::mutex> lock(m_ioMutex);
 #ifdef ARDUINO
-    std::string formatted = "\r" + cmd + "\r\n";
+    std::string formatted = cmd + "\r\n";
     Serial0.print(formatted.c_str());
     Serial.print(formatted.c_str());
 #if defined(USB_MODE) && USB_MODE
     if (CdcSerial.connected()) {
-        if (!usbHost.serialWriteQueueReady()) {
-            usbHost.serialWriteQueueBegin(4, 2060);
-        }
         CdcSerial.write((const uint8_t*)formatted.c_str(), formatted.length());
         CdcSerial.flush();
     }
@@ -422,7 +419,14 @@ void DeviceManager::sendSvsCommand(const std::string& cmd) {
 
 void DeviceManager::switchSvsInput(uint8_t input) {
     m_svsCurrentInput = input;
-    sendSvsCommand("SVS_Change_Input_" + std::to_string(input));
+    if (input == 0) {
+        setSvsPower(false);
+    } else {
+        if (!m_svsPower) {
+            setSvsPower(true);
+        }
+        sendSvsCommand("SVS_Change_Input_" + std::to_string(input));
+    }
 }
 
 void DeviceManager::seekSvsInput(bool up) {
