@@ -582,7 +582,7 @@ const char SVS_UI_HTML[] = R"rawliteral(<!DOCTYPE html>
       renderInputs();
       updateHero();
       try {
-        await apiFetch('/api/v1/svs/names', {
+        await authedFetch('/api/v1/svs/names', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ input: idx, name: name })
@@ -1142,6 +1142,7 @@ const char SVS_UI_HTML[] = R"rawliteral(<!DOCTYPE html>
                 appendTerminalLine(entry.d, entry.m);
               }
             });
+          }
           pollCount++;
           if (pollCount % 10 === 0) {
             loadServerInputNames();

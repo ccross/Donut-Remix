@@ -1,2 +1,2 @@
-405d88e716e37485628dfeb4b048b54c253fb8440e4a0bcdfbece761dcbefa7b  DonutRemix_v1.0.0.bin
-bab10271f84628a56dd5531a0f15e56cbb8af4357436e9f69d9a2b8e62f6ba35  DonutRemix_v1.0.0_full.bin
+7aeaae25d38f4d41afc83f1b2b6c81e6ff1b226624748e0ae56bcd29d4c13de8  DonutRemix_v1.0.0.bin
+30f3dae1ea5079787829620482d427daefc7efbaca385150179ecdc5329d785f  DonutRemix_v1.0.0_full.bin

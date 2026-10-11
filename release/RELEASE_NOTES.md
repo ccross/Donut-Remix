@@ -42,8 +42,8 @@ Donut Remix is an open-source, security-hardened upgrade to DonutShop for the **
 
 | Asset | Description | Size | SHA-256 Checksum |
 | :--- | :--- | :--- | :--- |
-| `DonutRemix_v1.0.0.bin` | OTA / Web update binary (flash via `/update`) | 1.88 MB | `405d88e716e37485628dfeb4b048b54c253fb8440e4a0bcdfbece761dcbefa7b` |
-| `DonutRemix_v1.0.0_full.bin` | Full factory flash image (0x000000) | 2.20 MB | `bab10271f84628a56dd5531a0f15e56cbb8af4357436e9f69d9a2b8e62f6ba35` |
+| `DonutRemix_v1.0.0.bin` | OTA / Web update binary (flash via `/update`) | 1.88 MB | `7aeaae25d38f4d41afc83f1b2b6c81e6ff1b226624748e0ae56bcd29d4c13de8` |
+| `DonutRemix_v1.0.0_full.bin` | Full factory flash image (0x000000) | 2.20 MB | `30f3dae1ea5079787829620482d427daefc7efbaca385150179ecdc5329d785f` |
 
 ---
 
