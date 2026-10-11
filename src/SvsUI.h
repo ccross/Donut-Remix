@@ -9,7 +9,7 @@ const char SVS_UI_HTML[] = R"rawliteral(<!DOCTYPE html>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Donut Remix | SVS Switch Controller</title>
   <style>
-    :root {
+    :root, [data-theme="dark"] {
       --bg: #101216;
       --card-bg: #181b22;
       --card-hover: #222631;
@@ -22,8 +22,27 @@ const char SVS_UI_HTML[] = R"rawliteral(<!DOCTYPE html>
       --active-border: #38bdf8;
       --active-glow: rgba(56, 189, 248, 0.35);
       --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --mono: ui-monospace, 'Cascadia Code', 'JetBrains Mono', Consolas, monospace;
+      --terminal-bg: #0b0e14;
+      --terminal-border: #242c3d;
     }
-    body.theme-light {
+    [data-theme="glazed"] {
+      --bg: #0b0e14;
+      --bg-gradient: radial-gradient(circle at 12% 10%, rgba(118, 205, 224, 0.22), transparent 35%), radial-gradient(circle at 86% 14%, rgba(222, 176, 224, 0.20), transparent 35%), linear-gradient(135deg, #0d1117 0%, #151b23 100%);
+      --card-bg: rgba(20, 25, 38, 0.85);
+      --card-hover: rgba(28, 35, 52, 0.95);
+      --border: rgba(255, 61, 129, 0.3);
+      --text: #dfe5f1;
+      --text-muted: #8b94ab;
+      --accent: #ff3d81;
+      --accent-glow: rgba(255, 61, 129, 0.35);
+      --success: #3dffa4;
+      --active-border: #3dd9ff;
+      --active-glow: rgba(61, 217, 255, 0.45);
+      --terminal-bg: rgba(11, 14, 20, 0.95);
+      --terminal-border: rgba(61, 217, 255, 0.35);
+    }
+    [data-theme="light"] {
       --bg: #f6f8fa;
       --card-bg: #ffffff;
       --card-hover: #f3f4f6;
@@ -32,11 +51,145 @@ const char SVS_UI_HTML[] = R"rawliteral(<!DOCTYPE html>
       --text-muted: #656d76;
       --accent: #d97706;
       --accent-glow: rgba(217, 119, 6, 0.2);
+      --success: #1a7f37;
       --active-border: #0284c7;
       --active-glow: rgba(2, 132, 199, 0.25);
+      --terminal-bg: #f6f8fa;
+      --terminal-border: #d0d7de;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: var(--font); }
-    body { background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; }
+    body { background: var(--bg); background-image: var(--bg-gradient, none); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; }
+    
+    .theme-menu-container { position: relative; }
+    .theme-dropdown {
+      position: absolute;
+      top: calc(100% + 6px);
+      right: 0;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px;
+      min-width: 140px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+      z-index: 1000;
+      backdrop-filter: blur(12px);
+    }
+    .theme-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 10px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      color: var(--text);
+      transition: background 0.12s;
+    }
+    .theme-item:hover { background: var(--card-hover); }
+    .theme-item.selected { font-weight: 700; color: var(--accent); }
+    .theme-check { margin-left: auto; font-size: 0.85rem; visibility: hidden; }
+    .theme-item.selected .theme-check { visibility: visible; }
+    .swatch { width: 10px; height: 10px; border-radius: 50%; border: 1px solid var(--border); }
+    .swatch-dark { background: #181b22; }
+    .swatch-glazed { background: linear-gradient(135deg, #ff3d81, #3dd9ff); }
+    .swatch-light { background: #ffffff; }
+
+    .terminal-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+    .terminal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .terminal-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .terminal-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+    .terminal-controls label {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .terminal-log {
+      font-family: var(--mono);
+      font-size: 0.82rem;
+      line-height: 1.6;
+      background: var(--terminal-bg);
+      border: 1px solid var(--terminal-border);
+      border-radius: 8px;
+      padding: 12px 16px;
+      height: 220px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .cl-tx { color: #38bdf8; }
+    .cl-rx { color: #4ade80; }
+    .cl-sys { color: #94a3b8; font-style: italic; }
+    .cl-err { color: #f87171; }
+    .cl-time { color: var(--text-muted); opacity: 0.6; user-select: none; margin-right: 6px; font-size: 0.75rem; }
+    .terminal-form {
+      display: flex;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .terminal-input {
+      flex: 1;
+      font-family: var(--mono);
+      font-size: 0.85rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 12px;
+      border-radius: 6px;
+      outline: none;
+    }
+    .terminal-input:focus {
+      border-color: var(--accent);
+    }
+    .terminal-chips {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+    .tchip {
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.04);
+      border-radius: 999px;
+      padding: 3px 10px;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .tchip:hover {
+      color: var(--text);
+      border-color: var(--text-muted);
+      background: var(--card-hover);
+    }
     header {
       background: var(--card-bg);
       border-bottom: 1px solid var(--border);
@@ -368,7 +521,28 @@ const char SVS_UI_HTML[] = R"rawliteral(<!DOCTYPE html>
       <div id="badge-conn" class="badge"><span class="dot"></span> Connecting...</div>
       <div id="badge-fw" class="badge">Firmware: --</div>
       <div id="badge-inputs" class="badge">Inputs: --</div>
-      <button id="theme-btn" class="btn" style="padding: 4px 10px; font-size: 0.8rem;" onclick="toggleTheme()">Theme</button>
+      <div class="theme-menu-container">
+        <button id="theme-btn" class="btn" style="padding: 4px 12px; font-size: 0.8rem; display: flex; align-items: center; gap: 6px;" onclick="toggleThemeMenu(event)">
+          <span>Theme</span> <span style="font-size: 0.65rem;">▼</span>
+        </button>
+        <div id="theme-dropdown" class="theme-dropdown" style="display: none;">
+          <div class="theme-item" id="choice-dark" onclick="selectTheme('dark')">
+            <span class="swatch swatch-dark"></span>
+            <span>Dark</span>
+            <span class="theme-check" id="check-dark">&#10003;</span>
+          </div>
+          <div class="theme-item" id="choice-glazed" onclick="selectTheme('glazed')">
+            <span class="swatch swatch-glazed"></span>
+            <span>Glazed</span>
+            <span class="theme-check" id="check-glazed">&#10003;</span>
+          </div>
+          <div class="theme-item" id="choice-light" onclick="selectTheme('light')">
+            <span class="swatch swatch-light"></span>
+            <span>Light</span>
+            <span class="theme-check" id="check-light">&#10003;</span>
+          </div>
+        </div>
+      </div>
     </div>
   </header>
 
@@ -421,6 +595,41 @@ const char SVS_UI_HTML[] = R"rawliteral(<!DOCTYPE html>
         <button id="btn-manual" class="btn" onclick="toggleManual()">Manual Lock</button>
         <button class="btn" onclick="fetchModules(true)">&#8635; Refresh Modules</button>
         <button class="btn" onclick="switchInput(0)" style="margin-left: auto;">Input 0 (Standby)</button>
+      </div>
+    </div>
+
+    <div class="terminal-card">
+      <div class="terminal-header">
+        <div class="terminal-title">
+          <span>Serial Terminal</span>
+          <span style="font-size: 0.75rem; font-weight: 500; color: var(--text-muted);" id="term-status">(CH340 &bull; 9600 baud)</span>
+        </div>
+        <div class="terminal-controls">
+          <label><input type="checkbox" id="term-autoscroll" checked> Auto-scroll</label>
+          <label><input type="checkbox" id="term-timestamps" checked> Timestamps</label>
+          <button class="btn" style="padding: 3px 8px; font-size: 0.75rem;" onclick="clearTerminal()">Clear</button>
+        </div>
+      </div>
+      <div class="terminal-log" id="terminal-log"></div>
+      <form class="terminal-form" onsubmit="sendTerminalCommand(event)">
+        <input type="text" id="terminal-input" class="terminal-input" placeholder="Enter command... (e.g. SVS_Change_Input_1, Seek, R550) (&uarr;&darr; history)" autocomplete="off" spellcheck="false" />
+        <button type="submit" class="btn btn-primary" style="padding: 8px 16px;">Send</button>
+      </form>
+      <div class="terminal-chips">
+        <button type="button" class="tchip" onclick="quickCmd('SVS_Change_Input_1')">Input 1</button>
+        <button type="button" class="tchip" onclick="quickCmd('SVS_Change_Input_2')">Input 2</button>
+        <button type="button" class="tchip" onclick="quickCmd('SVS_Change_Input_3')">Input 3</button>
+        <button type="button" class="tchip" onclick="quickCmd('SVS_Change_Input_4')">Input 4</button>
+        <button type="button" class="tchip" onclick="quickCmd('SVS_Change_Input_5')">Input 5</button>
+        <button type="button" class="tchip" onclick="quickCmd('SVS_Change_Input_6')">Input 6</button>
+        <button type="button" class="tchip" onclick="quickCmd('SVS_Input_Seek_Up')">Seek &blacktriangle;</button>
+        <button type="button" class="tchip" onclick="quickCmd('SVS_Input_Seek_Down')">Seek &blacktriangledown;</button>
+        <button type="button" class="tchip" onclick="quickCmd('SVS_Attract_ON')">Attract ON</button>
+        <button type="button" class="tchip" onclick="quickCmd('SVS_Attract_OFF')">Attract OFF</button>
+        <button type="button" class="tchip" onclick="quickCmd('R550')">Read 550 (RGsB)</button>
+        <button type="button" class="tchip" onclick="quickCmd('R590')">Read 590 (Sync)</button>
+        <button type="button" class="tchip" onclick="quickCmd('Y1')">Y1 (RGB-Comp 1)</button>
+        <button type="button" class="tchip" onclick="quickCmd('G1')">G1 (Comp-RGB 1)</button>
       </div>
     </div>
   </main>
@@ -918,6 +1127,142 @@ const char SVS_UI_HTML[] = R"rawliteral(<!DOCTYPE html>
       mBtn.innerText = isManual ? 'Manual: Locked' : 'Manual: Normal';
     }
 
+    // Terminal State & History
+    let cmdHistory = [];
+    let historyIdx = -1;
+    let seenLogKeys = new Set();
+
+    function formatTime() {
+      const d = new Date();
+      return d.toTimeString().split(' ')[0] + '.' + String(d.getMilliseconds()).padStart(3, '0');
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function appendTerminalLine(dir, text, timeStr) {
+      const log = document.getElementById('terminal-log');
+      if (!log) return;
+      const showTime = document.getElementById('term-timestamps')?.checked ?? true;
+      const line = document.createElement('div');
+      
+      let cls = 'cl-sys';
+      let prefix = '* [SYS] ';
+      if (dir === 'T') { cls = 'cl-tx'; prefix = '> [TX] '; }
+      else if (dir === 'R') { cls = 'cl-rx'; prefix = '< [RX] '; }
+      else if (dir === 'E') { cls = 'cl-err'; prefix = '! [ERR] '; }
+
+      const ts = timeStr || formatTime();
+      line.innerHTML = (showTime ? '<span class="cl-time">' + ts + '</span>' : '') +
+                       '<span class="' + cls + '"><strong>' + prefix + '</strong>' + escapeHtml(text) + '</span>';
+      log.appendChild(line);
+
+      if (document.getElementById('term-autoscroll')?.checked ?? true) {
+        log.scrollTop = log.scrollHeight;
+      }
+    }
+
+    function clearTerminal() {
+      const log = document.getElementById('terminal-log');
+      if (log) log.innerHTML = '';
+      appendTerminalLine('S', 'Terminal buffer cleared.');
+    }
+
+    async function sendTerminalCommand(e) {
+      if (e) e.preventDefault();
+      const input = document.getElementById('terminal-input');
+      const cmd = input.value.trim();
+      if (!cmd) return;
+      
+      cmdHistory.unshift(cmd);
+      if (cmdHistory.length > 50) cmdHistory.pop();
+      historyIdx = -1;
+      input.value = '';
+
+      appendTerminalLine('T', cmd);
+
+      try {
+        const res = await authedFetch('/api/v1/svs/command', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ cmd: cmd })
+        });
+        if (res.ok) {
+          const d = await res.json();
+          if (d.response && d.response.trim().length > 0) {
+            appendTerminalLine('R', d.response.trim());
+          }
+          pollStatus();
+        } else {
+          appendTerminalLine('E', 'Command error: HTTP ' + res.status);
+        }
+      } catch (err) {
+        appendTerminalLine('E', 'Network error: ' + err);
+      }
+    }
+
+    function quickCmd(cmd) {
+      const input = document.getElementById('terminal-input');
+      if (input) {
+        input.value = cmd;
+        sendTerminalCommand();
+      }
+    }
+
+    document.getElementById('terminal-input')?.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (historyIdx + 1 < cmdHistory.length) {
+          historyIdx++;
+          e.target.value = cmdHistory[historyIdx];
+        }
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (historyIdx > 0) {
+          historyIdx--;
+          e.target.value = cmdHistory[historyIdx];
+        } else if (historyIdx === 0) {
+          historyIdx = -1;
+          e.target.value = '';
+        }
+      }
+    });
+
+    // Theme Picker Functions
+    function toggleThemeMenu(e) {
+      if (e) e.stopPropagation();
+      const d = document.getElementById('theme-dropdown');
+      if (d) {
+        d.style.display = (d.style.display === 'none' || !d.style.display) ? 'block' : 'none';
+      }
+    }
+
+    function selectTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      localStorage.setItem('svs_theme', theme);
+      updateThemeChecks(theme);
+      const d = document.getElementById('theme-dropdown');
+      if (d) d.style.display = 'none';
+      showToast('Theme set to ' + theme.charAt(0).toUpperCase() + theme.slice(1));
+    }
+
+    function updateThemeChecks(activeTheme) {
+      ['dark', 'glazed', 'light'].forEach(t => {
+        const chk = document.getElementById('check-' + t);
+        const item = document.getElementById('choice-' + t);
+        if (chk) chk.style.visibility = (t === activeTheme) ? 'visible' : 'hidden';
+        if (item) item.classList.toggle('selected', t === activeTheme);
+      });
+    }
+
+    document.addEventListener('click', (e) => {
+      const d = document.getElementById('theme-dropdown');
+      if (d && !e.target.closest('.theme-menu-container')) {
+        d.style.display = 'none';
+      }
+    });
+
     async function pollStatus() {
       try {
         const res = await fetch('/api/v1/svs/status', { cache: 'no-store' });
@@ -945,6 +1290,25 @@ const char SVS_UI_HTML[] = R"rawliteral(<!DOCTYPE html>
 
           document.getElementById('badge-fw').innerText = 'Firmware: v' + (data.firmware || '1.20');
           document.getElementById('badge-inputs').innerText = 'Total: ' + totalInputs + ' Inputs';
+
+          // Terminal Status & Feed
+          const tStatus = document.getElementById('term-status');
+          if (tStatus) {
+            tStatus.innerText = (data.cdc_connected ? 'CDC Connected' : 'Ready') + ' • 9600 baud 8N1';
+          }
+          if (data.serial_log && Array.isArray(data.serial_log)) {
+            data.serial_log.forEach(entry => {
+              const key = entry.t + '_' + entry.d + '_' + entry.m;
+              if (!seenLogKeys.has(key)) {
+                seenLogKeys.add(key);
+                if (seenLogKeys.size > 200) {
+                  const it = seenLogKeys.values();
+                  seenLogKeys.delete(it.next().value);
+                }
+                appendTerminalLine(entry.d, entry.m);
+              }
+            });
+          }
         }
       } catch (e) {
         const bConn = document.getElementById('badge-conn');
@@ -953,14 +1317,10 @@ const char SVS_UI_HTML[] = R"rawliteral(<!DOCTYPE html>
       }
     }
 
-    function toggleTheme() {
-      document.body.classList.toggle('theme-light');
-      localStorage.setItem('svs_theme', document.body.classList.contains('theme-light') ? 'light' : 'dark');
-    }
-
-    if (localStorage.getItem('svs_theme') === 'light') {
-      document.body.classList.add('theme-light');
-    }
+    const savedTheme = localStorage.getItem('svs_theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    updateThemeChecks(savedTheme);
+    appendTerminalLine('S', 'Donut Remix Serial Terminal active. Connected to SVS bridge.');
 
     renderInputs();
     updateHero();

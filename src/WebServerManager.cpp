@@ -208,7 +208,7 @@ bool WebServerManager::authenticateRequest() {
 
 void WebServerManager::handleRoot() {
     setSecurityHeaders();
-    if (m_devices.isSvsConnected() || m_devices.getRT4KBaud() == 9600) {
+    if (m_devices.isSvsConnected()) {
         m_server.send(200, "text/html", SVS_UI_HTML);
         return;
     }
@@ -1092,6 +1092,14 @@ void WebServerManager::handleSvsStatus() {
     doc["last_bytes_written"] = m_devices.getLastSvsBytesWritten();
     doc["last_rx"] = m_devices.getLastSvsRx().c_str();
 #endif
+    auto logs = m_devices.getSerialLog(30);
+    JsonArray arrLogs = doc["serial_log"].to<JsonArray>();
+    for (const auto& entry : logs) {
+        JsonObject item = arrLogs.add<JsonObject>();
+        item["t"] = entry.timestampMs;
+        item["d"] = std::string(1, entry.direction);
+        item["m"] = entry.text.c_str();
+    }
     String out;
     serializeJson(doc, out);
     m_server.send(200, "application/json", out);

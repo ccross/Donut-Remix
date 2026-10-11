@@ -69,12 +69,12 @@ void setup() {
             deviceMgr.setRT4KBaud(9600);
             deviceMgr.setSvsConnected(true);
             Serial.println(F("[USB Host] Detected SVS Switch (CH340 9600 baud)"));
-        } else if (info.vid == 0x1209 || info.vid == 0x0483) {
-            // RetroTINK 4K Pro (CDC-ACM)
+        } else if (info.vid == 0x1209 || info.vid == 0x0483 || info.vid == 0x0403) {
+            // RetroTINK 4K Pro (CDC-ACM or FTDI)
             CdcSerial.begin(2000000);
             deviceMgr.setRT4KBaud(2000000);
             deviceMgr.setSvsConnected(false);
-            Serial.println(F("[USB Host] Detected RT4K (CDC-ACM 2M baud)"));
+            Serial.println(F("[USB Host] Detected RT4K (2M baud)"));
         }
     });
     usbHost.onDeviceDisconnected([](const EspUsbHostDeviceInfo& info) {
@@ -158,11 +158,19 @@ void loop() {
                     Serial.println(F("[USB Host] SVS Switch active (9600 baud)"));
                 }
                 break;
+            } else if (devs[i].vid == 0x1209 || devs[i].vid == 0x0483 || devs[i].vid == 0x0403) {
+                if (deviceMgr.isSvsConnected() || deviceMgr.getRT4KBaud() != 2000000) {
+                    deviceMgr.setSvsConnected(false);
+                    deviceMgr.setRT4KBaud(2000000);
+                    CdcSerial.begin(2000000);
+                    Serial.println(F("[USB Host] RT4K active (2M baud)"));
+                }
+                break;
             }
         }
     }
 
-    if (deviceMgr.isSvsConnected() || deviceMgr.getRT4KBaud() == 9600) {
+    if (deviceMgr.isSvsConnected()) {
         static String svsLine = "";
         while (CdcSerial.available()) {
             char c = (char)CdcSerial.read();

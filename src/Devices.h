@@ -105,6 +105,16 @@ public:
     std::string getLastSvsRx() const { return m_lastSvsRx; }
     void appendSvsRx(char c);
 
+    struct SerialLogEntry {
+        uint32_t timestampMs{0};
+        char direction{'S'}; // 'T' = TX, 'R' = RX, 'S' = SYS, 'E' = ERR
+        std::string text;
+    };
+
+    void addSerialLog(char direction, const std::string& text);
+    std::vector<SerialLogEntry> getSerialLog(size_t maxEntries = 30) const;
+    void clearSerialLog();
+
     // HTTP Bulk PUT Session for WebCtl
     struct HttpPutSession {
         bool active{false};
@@ -134,7 +144,7 @@ public:
     int getCurrentProfile() const { return m_currentProfile; }
 
 private:
-    std::mutex m_ioMutex;
+    mutable std::mutex m_ioMutex;
     int m_currentProfile{0};
     int m_prevProfile{0};
     uint32_t m_rt4kBaud{9600};
@@ -154,6 +164,8 @@ private:
     size_t m_lastSvsBytesWritten{0};
     std::string m_lastSvsRx;
     SvsModulesState m_svsModules;
+    std::vector<SerialLogEntry> m_serialLog;
+    void addSerialLogLocked(char direction, const std::string& text);
 
     HttpPutSession m_putSession;
     HttpPutProgressCallback m_putProgressCb;

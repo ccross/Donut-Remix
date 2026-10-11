@@ -401,9 +401,46 @@ void DeviceManager::wakeRT4K() {
 #endif
 }
 
+void DeviceManager::addSerialLogLocked(char direction, const std::string& text) {
+    if (text.empty()) return;
+    if (m_serialLog.size() >= 40) {
+        m_serialLog.erase(m_serialLog.begin());
+    }
+    SerialLogEntry entry;
+#ifdef ARDUINO
+    entry.timestampMs = millis();
+#else
+    entry.timestampMs = 0;
+#endif
+    entry.direction = direction;
+    entry.text = text;
+    m_serialLog.push_back(entry);
+}
+
+void DeviceManager::addSerialLog(char direction, const std::string& text) {
+    std::lock_guard<std::mutex> lock(m_ioMutex);
+    addSerialLogLocked(direction, text);
+}
+
+std::vector<DeviceManager::SerialLogEntry> DeviceManager::getSerialLog(size_t maxEntries) const {
+    std::lock_guard<std::mutex> lock(m_ioMutex);
+    std::vector<SerialLogEntry> result;
+    size_t start = (m_serialLog.size() > maxEntries) ? (m_serialLog.size() - maxEntries) : 0;
+    for (size_t i = start; i < m_serialLog.size(); ++i) {
+        result.push_back(m_serialLog[i]);
+    }
+    return result;
+}
+
+void DeviceManager::clearSerialLog() {
+    std::lock_guard<std::mutex> lock(m_ioMutex);
+    m_serialLog.clear();
+}
+
 void DeviceManager::sendSvsCommand(const std::string& cmd) {
     std::lock_guard<std::mutex> lock(m_ioMutex);
     m_lastSvsCmd = cmd;
+    addSerialLogLocked('T', cmd);
 #ifdef ARDUINO
     std::string formatted = cmd + "\r\n\r\n";
     Serial0.print(formatted.c_str());
@@ -425,6 +462,7 @@ void DeviceManager::sendSvsCommand(const std::string& cmd) {
 std::string DeviceManager::executeSvsCommandSync(const std::string& cmd, uint32_t timeoutMs) {
     std::lock_guard<std::mutex> lock(m_ioMutex);
     m_lastSvsCmd = cmd;
+    addSerialLogLocked('T', cmd);
     std::string response;
 #ifdef ARDUINO
     std::string formatted = cmd + "\r\n\r\n";
@@ -449,12 +487,16 @@ std::string DeviceManager::executeSvsCommandSync(const std::string& cmd, uint32_
             }
             delay(5);
         }
+        if (!response.empty()) {
+            addSerialLogLocked('R', response);
+        }
         return response;
     }
 #endif
 #else
     (void)timeoutMs;
     response = "OK (mock)";
+    addSerialLogLocked('R', response);
 #endif
     return response;
 }
@@ -515,6 +557,7 @@ void DeviceManager::setSvsCompRgb(bool on) {
 
 void DeviceManager::parseSvsLine(const std::string& line) {
     m_svsConnected = true;
+    addSerialLog('R', line);
     if (line.find("SVS_FW_") != std::string::npos) {
         size_t idx = line.find("SVS_FW_");
         m_svsFirmware = line.substr(idx + 7);
