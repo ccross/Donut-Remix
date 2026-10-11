@@ -101,6 +101,12 @@ void WebServerManager::begin() {
     m_server.on("/api/v1/system/restore", HTTP_POST, [this]() { handleSystemRestore(); });
     m_server.on("/api/v1/system/update", HTTP_POST, [this]() { handleFirmwareUpdate(); }, [this]() { handleFirmwareUpload(); });
 
+    // CYD (Cheap Yellow Display) & Embedded Dashboard REST API
+    m_server.on("/api/v1/rt4k/status", HTTP_GET, [this]() { handleCydStatus(); });
+    m_server.on("/api/v1/rt4k/remote", HTTP_POST, [this]() { handleCydRemote(); });
+    m_server.on("/api/v1/rt4k/profile", HTTP_POST, [this]() { handleCydProfile(); });
+    m_server.on("/api/v1/rt4k/exec", HTTP_POST, [this]() { handleCydExec(); });
+
     // WebCtl & Backward Compatibility endpoints
     m_server.on("/cmd", HTTP_POST, [this]() { handleLegacyCmd(); });
     m_server.on("/getConsoles", HTTP_GET, [this]() { handleGetConsoles(); });
@@ -757,6 +763,179 @@ void WebServerManager::handleFirmwareUpload() {
             Update.printError(Serial);
         }
     }
+}
+
+void WebServerManager::handleCydStatus() {
+    setSecurityHeaders();
+    JsonDocument doc;
+    doc["connected"] = m_devices.isUsbConnected();
+    doc["active_profile"] = m_devices.getCurrentProfile();
+
+    std::string king = "None";
+    auto consoles = m_config.getConsoles();
+    for (const auto& c : consoles) {
+        if (c.isOn && c.isKing) {
+            king = c.name;
+            break;
+        }
+    }
+    doc["active_console"] = king;
+    doc["uptime"] = millis() / 1000;
+    doc["free_heap"] = ESP.getFreeHeap();
+    doc["rt4k_baud"] = m_devices.getRT4KBaud();
+
+    String out;
+    serializeJson(doc, out);
+    m_server.send(200, "application/json", out);
+}
+
+void WebServerManager::handleCydRemote() {
+    if (!authenticateRequest()) return;
+    setSecurityHeaders();
+
+    if (!m_server.hasArg("plain")) {
+        m_server.send(400, "application/json", "{\"error\":\"Missing request body\"}");
+        return;
+    }
+
+    std::string button;
+    JsonDocument doc;
+    DeserializationError err = deserializeJson(doc, m_server.arg("plain"));
+    if (!err) {
+        if (doc["button"].is<const char*>()) {
+            button = doc["button"].as<const char*>();
+        } else if (doc["key"].is<const char*>()) {
+            button = doc["key"].as<const char*>();
+        }
+    }
+    if (button.empty()) {
+        button = m_server.arg("plain").c_str();
+    }
+
+    while (!button.empty() && (button.front() == ' ' || button.front() == '"')) button.erase(0, 1);
+    while (!button.empty() && (button.back() == ' ' || button.back() == '"' || button.back() == '\r' || button.back() == '\n')) button.pop_back();
+
+    if (button.empty()) {
+        m_server.send(400, "application/json", "{\"error\":\"Empty button key\"}");
+        return;
+    }
+
+    if (button.rfind("prof", 0) == 0 && button.length() > 4) {
+        int p = atoi(button.c_str() + 4);
+        if (p >= 1 && p <= 12) {
+            m_devices.sendRemoteButtonProfile(p);
+            m_server.send(200, "application/json", "{\"ok\":true,\"button\":\"" + String(button.c_str()) + "\"}");
+            return;
+        }
+    }
+
+    std::string fullCmd = "remote " + button;
+    std::string cleanCmd;
+    auto res = Guardrails::sanitizeCommand(fullCmd, cleanCmd);
+    if (!res.valid) {
+        res = Guardrails::sanitizeCommand(button, cleanCmd);
+        if (!res.valid) {
+            m_server.send(400, "application/json", "{\"error\":\"Invalid remote key\"}");
+            return;
+        }
+    }
+
+    m_devices.sendRawCommand(cleanCmd);
+    m_server.send(200, "application/json", "{\"ok\":true,\"command\":\"" + String(cleanCmd.c_str()) + "\"}");
+}
+
+void WebServerManager::handleCydProfile() {
+    if (!authenticateRequest()) return;
+    setSecurityHeaders();
+
+    if (!m_server.hasArg("plain")) {
+        m_server.send(400, "application/json", "{\"error\":\"Missing request body\"}");
+        return;
+    }
+
+    JsonDocument doc;
+    DeserializationError err = deserializeJson(doc, m_server.arg("plain"));
+    if (err) {
+        m_server.send(400, "application/json", "{\"error\":\"Invalid JSON\"}");
+        return;
+    }
+
+    if (doc["profile"].is<int>()) {
+        int prof = doc["profile"].as<int>();
+        m_devices.sendProfile(prof);
+        m_server.send(200, "application/json", "{\"ok\":true,\"profile\":" + String(prof) + "}");
+        return;
+    }
+
+    if (doc["svs"].is<int>()) {
+        int svs = doc["svs"].as<int>();
+        m_devices.sendSvsInput(svs);
+        m_server.send(200, "application/json", "{\"ok\":true,\"svs\":" + String(svs) + "}");
+        return;
+    }
+
+    if (doc["button"].is<int>()) {
+        int btn = doc["button"].as<int>();
+        m_devices.sendRemoteButtonProfile(btn);
+        m_server.send(200, "application/json", "{\"ok\":true,\"button\":" + String(btn) + "}");
+        return;
+    }
+
+    if (doc["name"].is<const char*>()) {
+        std::string name = doc["name"].as<const char*>();
+        std::string cmd = "load " + name;
+        std::string clean;
+        auto res = Guardrails::sanitizeCommand(cmd, clean);
+        if (!res.valid) {
+            m_server.send(400, "application/json", "{\"error\":\"Unsafe profile path\"}");
+            return;
+        }
+        m_devices.sendRawCommand(clean);
+        m_server.send(200, "application/json", "{\"ok\":true,\"loaded\":\"" + String(name.c_str()) + "\"}");
+        return;
+    }
+
+    m_server.send(400, "application/json", "{\"error\":\"Missing profile, svs, button, or name field\"}");
+}
+
+void WebServerManager::handleCydExec() {
+    if (!authenticateRequest()) return;
+    setSecurityHeaders();
+
+    if (!m_server.hasArg("plain")) {
+        m_server.send(400, "application/json", "{\"error\":\"Missing request body\"}");
+        return;
+    }
+
+    std::string cmd;
+    uint32_t timeoutMs = 250;
+    JsonDocument doc;
+    DeserializationError err = deserializeJson(doc, m_server.arg("plain"));
+    if (!err && doc["cmd"].is<const char*>()) {
+        cmd = doc["cmd"].as<const char*>();
+        if (doc["timeout"].is<uint32_t>()) {
+            timeoutMs = doc["timeout"].as<uint32_t>();
+            if (timeoutMs > 2000) timeoutMs = 2000;
+        }
+    } else {
+        cmd = m_server.arg("plain").c_str();
+    }
+
+    std::string clean;
+    auto res = Guardrails::sanitizeCommand(cmd, clean);
+    if (!res.valid) {
+        m_server.send(400, "application/json", "{\"error\":\"Command rejected by guardrail\"}");
+        return;
+    }
+
+    std::string output = m_devices.executeCommandSync(clean, timeoutMs);
+    JsonDocument resp;
+    resp["ok"] = true;
+    resp["command"] = clean;
+    resp["output"] = output;
+    String out;
+    serializeJson(resp, out);
+    m_server.send(200, "application/json", out);
 }
 #endif
 

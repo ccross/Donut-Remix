@@ -1,5 +1,6 @@
 #include "Devices.h"
 #include <iostream>
+#include <cstring>
 
 #ifdef ARDUINO
 #include <Arduino.h>
@@ -91,6 +92,53 @@ void DeviceManager::sendRawCommand(const std::string& cmd) {
 #else
     std::cout << "[Device Mock RT4K] Raw Command: " << cmd << std::endl;
 #endif
+}
+
+std::string DeviceManager::executeCommandSync(const std::string& cmd, uint32_t timeoutMs) {
+    std::lock_guard<std::mutex> lock(m_ioMutex);
+    std::string response;
+#ifdef ARDUINO
+    std::string formatted = "\r" + cmd + "\r\n";
+#if defined(USB_MODE) && USB_MODE
+    if (CdcSerial.connected()) {
+        while (CdcSerial.available()) {
+            CdcSerial.read();
+        }
+        if (!usbHost.serialWriteQueueReady()) {
+            usbHost.serialWriteQueueBegin(4, 2060);
+        }
+        CdcSerial.write((const uint8_t*)formatted.c_str(), formatted.length());
+        CdcSerial.flush();
+
+        uint32_t start = millis();
+        while (millis() - start < timeoutMs) {
+            while (CdcSerial.available()) {
+                char c = (char)CdcSerial.read();
+                response += c;
+            }
+            delay(2);
+        }
+        return response;
+    }
+#endif
+    while (Serial0.available()) {
+        Serial0.read();
+    }
+    Serial0.print(formatted.c_str());
+    Serial0.flush();
+    uint32_t start = millis();
+    while (millis() - start < timeoutMs) {
+        while (Serial0.available()) {
+            char c = (char)Serial0.read();
+            response += c;
+        }
+        delay(2);
+    }
+#else
+    (void)timeoutMs;
+    response = "[Device Mock RT4K Sync Response for: " + cmd + "]\n";
+#endif
+    return response;
 }
 
 void DeviceManager::sendSvsInput(uint16_t svsNumber) {

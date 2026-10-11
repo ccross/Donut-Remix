@@ -66,6 +66,12 @@ private:
     void handlePutUpload();
     void handleGameID();
     void handleDonutMemory();
+
+    // CYD (Cheap Yellow Display) & Embedded Dashboard Handlers
+    void handleCydStatus();
+    void handleCydRemote();
+    void handleCydProfile();
+    void handleCydExec();
 #endif
 };
 

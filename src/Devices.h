@@ -42,6 +42,7 @@ public:
     void sendSvsInput(uint16_t svsNumber);
     void sendRemoteButtonProfile(int rbpNumber);
     void sendRawCommand(const std::string& cmd);
+    std::string executeCommandSync(const std::string& cmd, uint32_t timeoutMs = 250);
 
     // Extron Matrix Serial
     void sendExtron1(const std::string& cmd);
