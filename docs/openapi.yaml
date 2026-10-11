@@ -252,6 +252,112 @@ paths:
         '200':
           description: Flash completed; device rebooting
 
+  /api/v1/rt4k/status:
+    get:
+      summary: Microcontroller RT4K Status
+      description: Returns lightweight, compact status information tailored for ESP32 CYD dashboards.
+      responses:
+        '200':
+          description: Status retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  connected:
+                    type: boolean
+                  active_profile:
+                    type: string
+                  active_console:
+                    type: string
+                  uptime:
+                    type: integer
+                  free_heap:
+                    type: integer
+                  rt4k_baud:
+                    type: integer
+
+  /api/v1/rt4k/remote:
+    post:
+      summary: Send Remote Button
+      description: Dispatches a remote control keypress to the RT4K over USB CDC.
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [button]
+              properties:
+                button:
+                  type: string
+                  example: "menu"
+      responses:
+        '200':
+          description: Button sent
+
+  /api/v1/rt4k/profile:
+    post:
+      summary: Switch RT4K Profile
+      description: Selects active RT4K profile by profile index, SVS input number, remote button, or SD path.
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                profile:
+                  type: integer
+                svs:
+                  type: integer
+                button:
+                  type: integer
+                name:
+                  type: string
+      responses:
+        '200':
+          description: Profile switched
+
+  /api/v1/rt4k/exec:
+    post:
+      summary: Synchronous RT4K Command Exec
+      description: Runs a command over RT4K USB CDC synchronously and returns the live response output.
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [cmd]
+              properties:
+                cmd:
+                  type: string
+                  example: "prof"
+      responses:
+        '200':
+          description: Command executed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  cmd:
+                    type: string
+                  response:
+                    type: string
+
 components:
   securitySchemes:
     BearerAuth:

@@ -170,6 +170,83 @@ Send a command to the RetroTINK 4K, video switch matrix, or IR emitter.
 
 ---
 
+### `GET /api/v1/rt4k/status`
+Retrieve hardware connection, active profile, console detection, and performance telemetry optimized for lightweight microcontrollers (such as ESP32 Cheap Yellow Display / CYD).
+
+**Response (200 OK):**
+```json
+{
+  "connected": true,
+  "active_profile": "SNES",
+  "active_console": "Super Nintendo",
+  "uptime": 1284,
+  "free_heap": 159044,
+  "rt4k_baud": 2000000
+}
+```
+
+---
+
+### `POST /api/v1/rt4k/remote`
+Dispatch simulated remote control button actions directly to the RetroTINK 4K over USB CDC.
+
+**Headers:** `Authorization: Bearer <token>` (or `X-Session-Token`)  
+**Request Body:**
+```json
+{
+  "button": "menu"
+}
+```
+*Supported buttons:* `menu`, `ok`, `back`, `up`, `down`, `left`, `right`, `pwr`, `prof1` through `prof12`, `input`, `res`, `aspect`.
+
+---
+
+### `POST /api/v1/rt4k/profile`
+Instantly switch the active RetroTINK 4K profile via index number, SVS input mapping, remote profile button, or SD card file path.
+
+**Headers:** `Authorization: Bearer <token>`  
+**Request Body Examples:**
+```json
+{
+  "profile": 1
+}
+```
+or by SD card profile path:
+```json
+{
+  "name": "0:/profile/SNES/FirebrandX_1080p.cfg"
+}
+```
+or by SVS input / remote button:
+```json
+{
+  "svs": 3
+}
+```
+
+---
+
+### `POST /api/v1/rt4k/exec`
+Synchronously execute a command on the RetroTINK 4K USB CDC bus (locked at 2,000,000 baud) and wait for the immediate serial response text.
+
+**Headers:** `Authorization: Bearer <token>`  
+**Request Body:**
+```json
+{
+  "cmd": "prof"
+}
+```
+**Response (200 OK):**
+```json
+{
+  "ok": true,
+  "cmd": "prof",
+  "response": "Active profile: 0:/profile/SNES/FirebrandX_1080p.cfg"
+}
+```
+
+---
+
 ### `GET /api/v1/system/backup`
 Download a complete JSON export of all configurations, consoles, and GameDB entries.
 
