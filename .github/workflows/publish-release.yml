@@ -1,0 +1,52 @@
+name: Publish Release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Publish or Update GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="v1.0.0"
+
+          echo "Checking release status for tag: $TAG"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG exists. Updating release assets and notes..."
+            gh release edit "$TAG" \
+              --title "Donut Remix v1.0.0" \
+              --notes-file release/RELEASE_NOTES.md
+
+            gh release upload "$TAG" \
+              release/DonutRemix_v1.0.0.bin \
+              release/DonutRemix_v1.0.0_full.bin \
+              release/SHA256SUMS.txt \
+              nora_recovery.bin \
+              --clobber
+          else
+            echo "Creating new release $TAG..."
+            gh release create "$TAG" \
+              --title "Donut Remix v1.0.0" \
+              --notes-file release/RELEASE_NOTES.md \
+              release/DonutRemix_v1.0.0.bin \
+              release/DonutRemix_v1.0.0_full.bin \
+              release/SHA256SUMS.txt \
+              nora_recovery.bin
+          fi
+
+          echo "Release successfully published!"
