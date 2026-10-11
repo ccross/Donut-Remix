@@ -3,12 +3,12 @@
   "name": "Donut Remix v1.0.0",
   "published_at": "2026-10-11T06:42:26Z",
   "html_url": "https://github.com/ccross/Donut-Remix/releases/tag/v1.0.0",
-  "body": "**Donut Remix v1.0.0 Initial Release**\r\n- Unified RetroTINK 4K Pro and Scalable Video Switch (SVS) firmware.\r\n- Responsive SVS web dashboard with transcoders, serial terminal, and theme parity.\r\n- Authentic WebCtl remote suite and GameID profile automation.\r\n- Built-in session security, rate limiting, and SSRF guardrails.",
+  "body": "**Donut Remix v1.0.0 Initial Release**\r\n- Unified RetroTINK 4K Pro and Scalable Video Switch (SVS) firmware.\r\n- Responsive SVS web dashboard with custom input channel naming saved to LittleFS.\r\n- Device-aware mDNS hostname resolution (donutremix-svs.local & donutremix-rt4k.local).\r\n- Authentic WebCtl remote suite and GameID profile automation.\r\n- Built-in session security, rate limiting, and SSRF guardrails.",
   "prerelease": false,
   "full": {
     "name": "DonutRemix_v1.0.0_full.bin",
     "size": 2200416,
-    "sha256": "94ad9954cf9ea4239cb98bdea7a7a01b1a4a69d7621bffcd77ef23dab3f5df41"
+    "sha256": "bab10271f84628a56dd5531a0f15e56cbb8af4357436e9f69d9a2b8e62f6ba35"
   },
   "recovery": {
     "name": "nora_recovery.bin",

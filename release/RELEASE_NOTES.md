@@ -6,6 +6,12 @@ Donut Remix is an open-source, security-hardened upgrade to DonutShop for the **
 
 ### 🌟 Highlights & Key Features
 
+- **Device-Aware mDNS Resolution:**
+  - Prevents local network hostname conflicts by automatically advertising as `http://donutremix-svs.local` (for SVS nodes) or `http://donutremix-rt4k.local` (for RT4K nodes). Custom hostnames can also be configured via `POST /api/v1/vars`.
+- **Server-Side SVS Custom Channel Names:**
+  - Custom channel labels (e.g. Input 1 -> "Super Nintendo", Input 2 -> "Sega Genesis") are stored directly in LittleFS on the ESP32 (`/svs_names.json`) via `GET` / `POST /api/v1/svs/names`, syncing seamlessly across all client phones and PCs on the network.
+- **Web Serial Browser Installer:**
+  - Browser-based flashing suite (`install/index.html`) using Web Serial API to flash Nano ESP32 boards with one click, complete with authentic Donut Remix branding and bundled drivers.
 - **Zero-Config Hardware Auto-Detection:**
   - Automatically identifies whether an attached USB OTG device is a RetroTINK 4K / 4K Pro (2,000,000 baud CDC-ACM or FTDI) or a Scalable Video Switch (9,600 baud CH340).
 - **Scalable Video Switch (SVS) Web Dashboard:**
@@ -36,8 +42,8 @@ Donut Remix is an open-source, security-hardened upgrade to DonutShop for the **
 
 | Asset | Description | Size | SHA-256 Checksum |
 | :--- | :--- | :--- | :--- |
-| `DonutRemix_v1.0.0.bin` | OTA / Web update binary (flash via `/update`) | 1.8 MB | `de5565d7218773f58ec34393093af8b3f9c12bd4459fddfa790e40f97d47b52f` |
-| `DonutRemix_v1.0.0_full.bin` | Full factory flash image (0x000000) | 2.2 MB | `94ad9954cf9ea4239cb98bdea7a7a01b1a4a69d7621bffcd77ef23dab3f5df41` |
+| `DonutRemix_v1.0.0.bin` | OTA / Web update binary (flash via `/update`) | 1.88 MB | `405d88e716e37485628dfeb4b048b54c253fb8440e4a0bcdfbece761dcbefa7b` |
+| `DonutRemix_v1.0.0_full.bin` | Full factory flash image (0x000000) | 2.20 MB | `bab10271f84628a56dd5531a0f15e56cbb8af4357436e9f69d9a2b8e62f6ba35` |
 
 ---
 

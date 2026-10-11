@@ -91,6 +91,8 @@ private:
     void handleSvsCommand();
     void handleSvsModulesGet();
     void handleSvsModulesPost();
+    void handleSvsNamesGet();
+    void handleSvsNamesPost();
 #endif
 };
 

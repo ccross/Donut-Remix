@@ -3,10 +3,16 @@
 #include <iomanip>
 #include <algorithm>
 
+#ifdef ARDUINO
+#include <LittleFS.h>
+#include <ArduinoJson.h>
+#endif
+
 namespace DonutRemix {
 
 ConfigManager::ConfigManager() {
     loadDefaults();
+    loadSvsNamesFromStorage();
 }
 
 void ConfigManager::loadDefaults() {
@@ -25,6 +31,16 @@ void ConfigManager::loadDefaults() {
         {"N64 EverDrive", "00000000-00000000---00", "7"},
         {"Super Mario 64", "4e534d45", "1"},
         {"Zelda OOT", "435a4c45", "2"}
+    };
+
+    // Default SVS friendly input names
+    m_svsInputNames = {
+        {1, "SNES"},
+        {2, "Genesis"},
+        {3, "PS1"},
+        {4, "N64"},
+        {5, "Saturn"},
+        {6, "Dreamcast"}
     };
 
     m_vars = SystemVars{};
@@ -137,6 +153,71 @@ SystemVars ConfigManager::getVars() {
 void ConfigManager::setVars(const SystemVars& vars) {
     std::lock_guard<std::mutex> lock(m_mutex);
     m_vars = vars;
+}
+
+std::map<uint8_t, std::string> ConfigManager::getSvsInputNames() {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    return m_svsInputNames;
+}
+
+void ConfigManager::setSvsInputName(uint8_t input, const std::string& name) {
+    if (input < 1 || input > 32) return;
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_svsInputNames[input] = name;
+    }
+    saveSvsNamesToStorage();
+}
+
+void ConfigManager::setSvsInputNames(const std::map<uint8_t, std::string>& names) {
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        for (const auto& kv : names) {
+            if (kv.first >= 1 && kv.first <= 32) {
+                m_svsInputNames[kv.first] = kv.second;
+            }
+        }
+    }
+    saveSvsNamesToStorage();
+}
+
+void ConfigManager::loadSvsNamesFromStorage() {
+#ifdef ARDUINO
+    if (LittleFS.exists("/svs_names.json")) {
+        File f = LittleFS.open("/svs_names.json", "r");
+        if (f) {
+            JsonDocument doc;
+            DeserializationError err = deserializeJson(doc, f);
+            f.close();
+            if (!err && doc.is<JsonObject>()) {
+                std::lock_guard<std::mutex> lock(m_mutex);
+                for (JsonPair p : doc.as<JsonObject>()) {
+                    int key = atoi(p.key().c_str());
+                    if (key >= 1 && key <= 32 && p.value().is<const char*>()) {
+                        m_svsInputNames[(uint8_t)key] = p.value().as<const char*>();
+                    }
+                }
+            }
+        }
+    }
+#endif
+}
+
+void ConfigManager::saveSvsNamesToStorage() {
+#ifdef ARDUINO
+    File f = LittleFS.open("/svs_names.json", "w");
+    if (f) {
+        JsonDocument doc;
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            for (const auto& kv : m_svsInputNames) {
+                doc[String(kv.first)] = kv.second.c_str();
+            }
+        }
+        serializeJson(doc, f);
+        f.close();
+    }
+#endif
 }
 
 static std::string escapeJson(const std::string& s) {

@@ -456,6 +456,52 @@ Returns the updated `modules` state payload matching `GET /api/v1/svs/modules`.
 
 ---
 
+### `GET /api/v1/svs/names`
+Retrieve friendly channel display names configured for SVS inputs.
+
+**Response (200 OK):**
+```json
+{
+  "ok": true,
+  "names": {
+    "1": "SNES",
+    "2": "Genesis",
+    "3": "PS1",
+    "4": "N64",
+    "5": "Saturn",
+    "6": "Dreamcast"
+  }
+}
+```
+
+---
+
+### `POST /api/v1/svs/names`
+Update friendly channel display names persisted in Flash memory for multi-device synchronization across phones, tablets, and computers.
+
+**Update single channel:**
+```json
+{
+  "input": 1,
+  "name": "Super Nintendo"
+}
+```
+
+**Bulk update:**
+```json
+{
+  "names": {
+    "1": "Super Nintendo",
+    "2": "Sega Genesis"
+  }
+}
+```
+
+**Response (200 OK):**
+Returns the updated `names` mapping matching `GET /api/v1/svs/names`.
+
+---
+
 ## 4. UI Customization & Theme Persistence
 
 ### `GET /webctl-theme`

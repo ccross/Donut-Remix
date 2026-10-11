@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <array>
+#include <map>
 #include <cstdint>
 #include <mutex>
 #include "Guardrails.h"
@@ -70,6 +71,11 @@ public:
     SystemVars getVars();
     void setVars(const SystemVars& vars);
 
+    // Thread-safe access to SVS Input Names
+    std::map<uint8_t, std::string> getSvsInputNames();
+    void setSvsInputName(uint8_t input, const std::string& name);
+    void setSvsInputNames(const std::map<uint8_t, std::string>& names);
+
     // JSON serialization / deserialization helpers
     std::string exportAllJson();
     ValidationResult importAllJson(const std::string& jsonString);
@@ -82,8 +88,11 @@ private:
     std::vector<ConsoleEntry> m_consoles;
     std::vector<GameDBEntry> m_gameDB;
     SystemVars m_vars;
+    std::map<uint8_t, std::string> m_svsInputNames;
 
     void loadDefaults();
+    void loadSvsNamesFromStorage();
+    void saveSvsNamesToStorage();
 };
 
 } // namespace DonutRemix

@@ -82,11 +82,33 @@ void testJsonExport() {
     std::cout << "  -> Passed!" << std::endl;
 }
 
+void testSvsInputNames() {
+    std::cout << "[Test] SVS Input Names..." << std::endl;
+    ConfigManager cfg;
+
+    auto names = cfg.getSvsInputNames();
+    assert(names.size() == 6);
+    assert(names[1] == "SNES");
+    assert(names[2] == "Genesis");
+
+    cfg.setSvsInputName(1, "Super Famicom");
+    auto updated = cfg.getSvsInputNames();
+    assert(updated[1] == "Super Famicom");
+
+    cfg.setSvsInputNames({{2, "Mega Drive"}, {7, "MiSTer"}});
+    auto bulk = cfg.getSvsInputNames();
+    assert(bulk[2] == "Mega Drive");
+    assert(bulk[7] == "MiSTer");
+
+    std::cout << "  -> Passed!" << std::endl;
+}
+
 int main() {
     testConfigDefaults();
     testConsoleBoundsAndValidation();
     testGameDBLookup();
     testJsonExport();
+    testSvsInputNames();
     std::cout << "All Config tests passed successfully!" << std::endl;
     return 0;
 }

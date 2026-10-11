@@ -809,7 +809,7 @@ async function flashBootloaderDevice(portOverride = null, automatic = false){
     await loader.eraseFlash();
     log("Flash erase complete.");
 
-    log("Writing DonutShop firmware…");
+    log("Writing Donut Remix firmware…");
 
     await loader.writeFlash({
       fileArray: [

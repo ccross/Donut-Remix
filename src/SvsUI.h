@@ -548,18 +548,47 @@ const char SVS_UI_HTML[] = R"rawliteral(<!DOCTYPE html>
     let isAttract = false;
     let isManual = false;
 
+    let serverInputNames = {};
+    let pollCount = 0;
+
+    async function loadServerInputNames() {
+      try {
+        const res = await fetch('/api/v1/svs/names', { cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.names) {
+            serverInputNames = data.names;
+            renderInputs();
+            updateHero();
+          }
+        }
+      } catch (e) {}
+    }
+
     function getInputName(idx) {
       if (idx === 0) return 'Standby / None';
+      if (serverInputNames[idx] && String(serverInputNames[idx]).trim() !== '') {
+        return serverInputNames[idx];
+      }
       const saved = localStorage.getItem('svs_input_name_' + idx);
       if (saved) return saved;
       const defaults = { 1: 'SNES', 2: 'Genesis', 3: 'PS1', 4: 'N64', 5: 'Saturn', 6: 'Dreamcast' };
       return defaults[idx] || ('Input ' + idx);
     }
 
-    function setInputName(idx, name) {
+    async function setInputName(idx, name) {
+      serverInputNames[idx] = name;
       localStorage.setItem('svs_input_name_' + idx, name);
       renderInputs();
       updateHero();
+      try {
+        await apiFetch('/api/v1/svs/names', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ input: idx, name: name })
+        });
+        toast('Saved name for Input ' + idx, 'ok');
+      } catch (e) {}
     }
 
     function editName(e, idx) {
@@ -1113,6 +1142,9 @@ const char SVS_UI_HTML[] = R"rawliteral(<!DOCTYPE html>
                 appendTerminalLine(entry.d, entry.m);
               }
             });
+          pollCount++;
+          if (pollCount % 10 === 0) {
+            loadServerInputNames();
           }
         }
       } catch (e) {
@@ -1123,6 +1155,7 @@ const char SVS_UI_HTML[] = R"rawliteral(<!DOCTYPE html>
 
     renderInputs();
     updateHero();
+    loadServerInputNames();
     pollStatus();
     fetchModules(false);
     setInterval(pollStatus, 1500);

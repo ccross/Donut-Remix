@@ -69,12 +69,30 @@ void setup() {
             deviceMgr.setRT4KBaud(9600);
             deviceMgr.setSvsConnected(true);
             Serial.println(F("[USB Host] Detected SVS Switch (CH340 9600 baud)"));
+
+            auto v = configMgr.getVars();
+            if (v.hostname == "donutshop" || v.hostname == "donutremix" || v.hostname.empty() || v.hostname == "donutremix-rt4k") {
+                MDNS.end();
+                if (MDNS.begin("donutremix-svs")) {
+                    MDNS.addService("http", "tcp", 80);
+                    Serial.println(F("[INFO] mDNS updated to http://donutremix-svs.local"));
+                }
+            }
         } else if (info.vid == 0x1209 || info.vid == 0x0483 || info.vid == 0x0403) {
             // RetroTINK 4K Pro (CDC-ACM or FTDI)
             CdcSerial.begin(2000000);
             deviceMgr.setRT4KBaud(2000000);
             deviceMgr.setSvsConnected(false);
             Serial.println(F("[USB Host] Detected RT4K (2M baud)"));
+
+            auto v = configMgr.getVars();
+            if (v.hostname == "donutshop" || v.hostname == "donutremix" || v.hostname.empty() || v.hostname == "donutremix-svs") {
+                MDNS.end();
+                if (MDNS.begin("donutremix-rt4k")) {
+                    MDNS.addService("http", "tcp", 80);
+                    Serial.println(F("[INFO] mDNS updated to http://donutremix-rt4k.local"));
+                }
+            }
         }
     });
     usbHost.onDeviceDisconnected([](const EspUsbHostDeviceInfo& info) {
@@ -87,6 +105,7 @@ void setup() {
     CdcSerial.setDtr(false);
     CdcSerial.setRts(false);
     usbHost.begin();
+    delay(500); // Allow USB enumeration to detect connected device before WiFi / mDNS setup
 #endif
 
     // 2. Initialize LittleFS
@@ -96,7 +115,22 @@ void setup() {
 
     // 3. Connect WiFi using WiFiManager
     auto vars = configMgr.getVars();
-    WiFi.setHostname(vars.hostname.c_str());
+    std::string activeHostname = vars.hostname;
+
+    // Device-aware default hostname to prevent mDNS collisions on multi-device networks
+    if (activeHostname == "donutshop" || activeHostname == "donutremix" || activeHostname.empty()) {
+#if USB_MODE
+        if (deviceMgr.isSvsConnected()) {
+            activeHostname = "donutremix-svs";
+        } else {
+            activeHostname = "donutremix-rt4k";
+        }
+#else
+        activeHostname = "donutremix";
+#endif
+    }
+
+    WiFi.setHostname(activeHostname.c_str());
     esp_wifi_set_ps(WIFI_PS_NONE); // Disable power saving to maximize AP broadcast signal
 
     WiFiManager wm;
@@ -112,13 +146,13 @@ void setup() {
     }
 
     // 4. mDNS
-    if (MDNS.begin(vars.hostname.c_str())) {
+    if (MDNS.begin(activeHostname.c_str())) {
         MDNS.addService("http", "tcp", 80);
-        Serial.printf("[INFO] mDNS responder started: http://%s.local\n", vars.hostname.c_str());
+        Serial.printf("[INFO] mDNS responder started: http://%s.local\n", activeHostname.c_str());
     }
 
     // 5. Secure ArduinoOTA Setup (Fixes VULN-02)
-    ArduinoOTA.setHostname(vars.hostname.c_str());
+    ArduinoOTA.setHostname(activeHostname.c_str());
     ArduinoOTA.setPassword(securityMgr.getPasswordHash().substr(0, 16).c_str());
     ArduinoOTA.onError([](ota_error_t error) {
         Serial.printf("[OTA] Error[%u]\n", error);

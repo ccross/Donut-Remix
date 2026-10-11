@@ -8,6 +8,7 @@
 #ifdef ARDUINO
 #include <ArduinoJson.h>
 #include <Update.h>
+#include <ESPmDNS.h>
 #if defined(USB_MODE) && USB_MODE
 #include <EspUsbHost.h>
 extern EspUsbHost usbHost;
@@ -106,6 +107,8 @@ void WebServerManager::begin() {
     m_server.on("/api/v1/svs/command", HTTP_POST, [this]() { handleSvsCommand(); });
     m_server.on("/api/v1/svs/modules", HTTP_GET, [this]() { handleSvsModulesGet(); });
     m_server.on("/api/v1/svs/modules", HTTP_POST, [this]() { handleSvsModulesPost(); });
+    m_server.on("/api/v1/svs/names", HTTP_GET, [this]() { handleSvsNamesGet(); });
+    m_server.on("/api/v1/svs/names", HTTP_POST, [this]() { handleSvsNamesPost(); });
 
     // CORS preflight OPTIONS handlers
     auto sendOptions = [this]() {
@@ -124,6 +127,7 @@ void WebServerManager::begin() {
     m_server.on("/api/v1/svs/power", HTTP_OPTIONS, sendOptions);
     m_server.on("/api/v1/svs/command", HTTP_OPTIONS, sendOptions);
     m_server.on("/api/v1/svs/modules", HTTP_OPTIONS, sendOptions);
+    m_server.on("/api/v1/svs/names", HTTP_OPTIONS, sendOptions);
 
     // WebCtl & Backward Compatibility endpoints
     m_server.on("/cmd", HTTP_POST, [this]() { handleLegacyCmd(); });
@@ -545,6 +549,27 @@ void WebServerManager::handlePostVars() {
     if (doc["S0"].is<bool>()) vars.s0 = doc["S0"].as<bool>();
     if (doc["SRS"].is<uint8_t>()) vars.srs = doc["SRS"].as<uint8_t>();
     if (doc["offset"].is<uint16_t>()) vars.offset = doc["offset"].as<uint16_t>();
+    if (doc["hostname"].is<const char*>()) {
+        std::string newHost = doc["hostname"].as<const char*>();
+        auto valRes = Guardrails::validateHostname(newHost);
+        if (!valRes.valid) {
+            JsonDocument errDoc;
+            errDoc["error"] = valRes.errorMessage;
+            String errOut;
+            serializeJson(errDoc, errOut);
+            m_server.send(400, "application/json", errOut);
+            return;
+        }
+        if (vars.hostname != newHost) {
+            vars.hostname = newHost;
+#ifdef ARDUINO
+            MDNS.end();
+            if (MDNS.begin(newHost.c_str())) {
+                MDNS.addService("http", "tcp", 80);
+            }
+#endif
+        }
+    }
 
     m_config.setVars(vars);
     m_server.send(200, "application/json", "{\"status\":\"ok\"}");
@@ -1280,6 +1305,63 @@ void WebServerManager::handleSvsModulesPost() {
     }
 
     handleSvsModulesGet();
+}
+
+void WebServerManager::handleSvsNamesGet() {
+    setSecurityHeaders();
+    auto names = m_config.getSvsInputNames();
+    JsonDocument doc;
+    doc["ok"] = true;
+    JsonObject obj = doc["names"].to<JsonObject>();
+    for (const auto& kv : names) {
+        obj[String(kv.first)] = kv.second.c_str();
+    }
+    String out;
+    serializeJson(doc, out);
+    m_server.send(200, "application/json", out);
+}
+
+void WebServerManager::handleSvsNamesPost() {
+    setSecurityHeaders();
+    if (!m_server.hasArg("plain")) {
+        m_server.send(400, "application/json", "{\"error\":\"Missing body\"}");
+        return;
+    }
+    JsonDocument doc;
+    DeserializationError err = deserializeJson(doc, m_server.arg("plain"));
+    if (err) {
+        m_server.send(400, "application/json", "{\"error\":\"Invalid JSON\"}");
+        return;
+    }
+
+    if (doc["input"].is<int>() && doc["name"].is<const char*>()) {
+        int inVal = doc["input"].as<int>();
+        std::string name = doc["name"].as<const char*>();
+        if (inVal >= 1 && inVal <= 32) {
+            if (name.length() > 32) name = name.substr(0, 32);
+            m_config.setSvsInputName((uint8_t)inVal, name);
+        }
+    } else if (doc["names"].is<JsonObject>()) {
+        for (JsonPair p : doc["names"].as<JsonObject>()) {
+            int inVal = atoi(p.key().c_str());
+            if (inVal >= 1 && inVal <= 32 && p.value().is<const char*>()) {
+                std::string name = p.value().as<const char*>();
+                if (name.length() > 32) name = name.substr(0, 32);
+                m_config.setSvsInputName((uint8_t)inVal, name);
+            }
+        }
+    } else if (doc.is<JsonObject>()) {
+        for (JsonPair p : doc.as<JsonObject>()) {
+            int inVal = atoi(p.key().c_str());
+            if (inVal >= 1 && inVal <= 32 && p.value().is<const char*>()) {
+                std::string name = p.value().as<const char*>();
+                if (name.length() > 32) name = name.substr(0, 32);
+                m_config.setSvsInputName((uint8_t)inVal, name);
+            }
+        }
+    }
+
+    handleSvsNamesGet();
 }
 #endif
 
