@@ -557,8 +557,13 @@ void WebServerManager::handleWebCtlCommand() {
 
 void WebServerManager::handleWebCtlOptions() {
     setSecurityHeaders();
-    if (m_server.method() == HTTP_POST && m_server.hasArg("plain")) {
-        String body = m_server.arg("plain");
+    if (m_server.method() == HTTP_POST) {
+        String body = "";
+        if (m_server.hasArg("plain")) {
+            body = m_server.arg("plain");
+        } else if (m_server.args() > 0) {
+            body = m_server.argName(0) + "=" + m_server.arg(0);
+        }
         int eq = body.indexOf('=');
         if (eq > 0) {
             String opt = body.substring(0, eq);
@@ -653,8 +658,15 @@ void WebServerManager::handleWebCtlMove() {
 
 void WebServerManager::handleWebCtlTheme() {
     setSecurityHeaders();
-    if (m_server.method() == HTTP_POST && m_server.hasArg("plain")) {
-        String body = m_server.arg("plain");
+    if (m_server.method() == HTTP_POST) {
+        String body = "";
+        if (m_server.hasArg("plain")) {
+            body = m_server.arg("plain");
+        } else if (m_server.hasArg("theme")) {
+            body = m_server.arg("theme");
+        } else if (m_server.args() > 0) {
+            body = m_server.argName(0) + "=" + m_server.arg(0);
+        }
         if (body.indexOf("light") >= 0 || body.indexOf("glazed") >= 0) {
             m_webctlTheme = "light";
         } else if (body.indexOf("dark") >= 0) {
