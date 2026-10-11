@@ -29,6 +29,15 @@ private:
 #ifdef ARDUINO
     WebServer m_server;
 
+    // WebCtl State
+    std::string m_webctlTheme{"dark"};
+    bool m_optStruct{true};
+    bool m_optConsole{true};
+    bool m_optExpert{true};
+    bool m_optDiag{true};
+    bool m_optMemory{true};
+    bool m_optFwTest{false};
+
     // Middleware & Security
     void setSecurityHeaders();
     bool authenticateRequest();

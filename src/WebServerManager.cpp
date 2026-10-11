@@ -36,22 +36,6 @@ void WebServerManager::begin() {
     m_server.on("/term", HTTP_GET, [this]() { handleGameID(); });
     m_server.on("/donut-memory", HTTP_GET, [this]() { handleDonutMemory(); });
     m_server.on("/favicon.ico", HTTP_GET, [this]() { m_server.send(204); });
-    m_server.on("/webctl-theme", HTTP_GET, [this]() {
-        setSecurityHeaders();
-        m_server.send(200, "application/json", "{\"ok\":true,\"theme\":\"dark\"}");
-    });
-    m_server.on("/webctl-theme", HTTP_POST, [this]() {
-        setSecurityHeaders();
-        m_server.send(200, "application/json", "{\"ok\":true,\"theme\":\"dark\"}");
-    });
-    m_server.on("/webctl-options", HTTP_GET, [this]() {
-        setSecurityHeaders();
-        m_server.send(200, "application/json", "{\"ok\":true,\"struct\":true,\"console\":true,\"expert\":true,\"diag\":true,\"memory\":true,\"fwtest\":false}");
-    });
-    m_server.on("/webctl-options", HTTP_POST, [this]() {
-        setSecurityHeaders();
-        m_server.send(200, "application/json", "{\"ok\":true,\"struct\":true,\"console\":true,\"expert\":true,\"diag\":true,\"memory\":true,\"fwtest\":false}");
-    });
     m_server.on("/rt4k-fw-cleanup", HTTP_POST, [this]() {
         setSecurityHeaders();
         m_server.send(200, "application/json", "{\"ok\":true}");
@@ -203,10 +187,65 @@ void WebServerManager::handleGameID() {
 void WebServerManager::handleDonutMemory() {
     setSecurityHeaders();
     JsonDocument doc;
+#ifdef ARDUINO
+    doc["ok"] = true;
+    doc["resetReason"] = (int)esp_reset_reason();
+    doc["ddReady"] = true;
+    doc["ddStackMinFree"] = 4096;
+    doc["ddStackAlloc"] = 8192;
+    doc["gidReady"] = true;
+    doc["gidStackMinFree"] = 4096;
+    doc["gidStackAlloc"] = 8192;
+    doc["rxReady"] = true;
+    doc["rxStackMinFree"] = 4096;
+    doc["rxStackAlloc"] = 8192;
+    doc["httpReady"] = true;
+    doc["httpStackMinFree"] = 4096;
+    doc["httpStackAlloc"] = 8192;
+    doc["ackLastReady"] = false;
+
+    doc["internalFree"] = ESP.getFreeHeap();
+    doc["internalMin"] = ESP.getMinFreeHeap();
+    doc["internalLargest"] = ESP.getMaxAllocHeap();
+
+    doc["psramFree"] = ESP.getFreePsram();
+    doc["psramMin"] = ESP.getMinFreePsram();
+    doc["psramLargest"] = ESP.getMaxAllocPsram();
+
+    doc["bridgePeak"] = 0;
+    doc["bridgeCapacity"] = 16384;
+    doc["uptimeMs"] = millis();
+
     doc["freeHeap"] = ESP.getFreeHeap();
     doc["minFreeHeap"] = ESP.getMinFreeHeap();
     doc["psramSize"] = ESP.getPsramSize();
-    doc["freePsram"] = ESP.getFreePsram();
+#else
+    doc["ok"] = true;
+    doc["resetReason"] = 1;
+    doc["ddReady"] = true;
+    doc["ddStackMinFree"] = 4096;
+    doc["ddStackAlloc"] = 8192;
+    doc["gidReady"] = true;
+    doc["gidStackMinFree"] = 4096;
+    doc["gidStackAlloc"] = 8192;
+    doc["rxReady"] = true;
+    doc["rxStackMinFree"] = 4096;
+    doc["rxStackAlloc"] = 8192;
+    doc["httpReady"] = true;
+    doc["httpStackMinFree"] = 4096;
+    doc["httpStackAlloc"] = 8192;
+    doc["ackLastReady"] = false;
+    doc["internalFree"] = 240000;
+    doc["internalMin"] = 200000;
+    doc["internalLargest"] = 180000;
+    doc["psramFree"] = 8000000;
+    doc["psramMin"] = 7800000;
+    doc["psramLargest"] = 7500000;
+    doc["bridgePeak"] = 0;
+    doc["bridgeCapacity"] = 16384;
+    doc["uptimeMs"] = 120000;
+    doc["freeHeap"] = 240000;
+#endif
     String out;
     serializeJson(doc, out);
     m_server.send(200, "application/json", out);
@@ -518,7 +557,31 @@ void WebServerManager::handleWebCtlCommand() {
 
 void WebServerManager::handleWebCtlOptions() {
     setSecurityHeaders();
-    m_server.send(200, "application/json", "{\"struct\":true,\"console\":true,\"expert\":true,\"diag\":true,\"showDonutMemory\":false}");
+    if (m_server.method() == HTTP_POST && m_server.hasArg("plain")) {
+        String body = m_server.arg("plain");
+        int eq = body.indexOf('=');
+        if (eq > 0) {
+            String opt = body.substring(0, eq);
+            bool val = body.substring(eq + 1).toInt() > 0 || body.substring(eq + 1).equalsIgnoreCase("true");
+            if (opt == "struct") m_optStruct = val;
+            else if (opt == "console") m_optConsole = val;
+            else if (opt == "expert") m_optExpert = val;
+            else if (opt == "diag") m_optDiag = val;
+            else if (opt == "memory") m_optMemory = val;
+            else if (opt == "fwtest") m_optFwTest = val;
+        }
+    }
+    JsonDocument doc;
+    doc["ok"] = true;
+    doc["struct"] = m_optStruct;
+    doc["console"] = m_optConsole;
+    doc["expert"] = m_optExpert;
+    doc["diag"] = m_optDiag;
+    doc["memory"] = m_optMemory;
+    doc["fwtest"] = m_optFwTest;
+    String out;
+    serializeJson(doc, out);
+    m_server.send(200, "application/json", out);
 }
 
 void WebServerManager::handleWebCtlInfo() {
@@ -591,13 +654,19 @@ void WebServerManager::handleWebCtlMove() {
 void WebServerManager::handleWebCtlTheme() {
     setSecurityHeaders();
     if (m_server.method() == HTTP_POST && m_server.hasArg("plain")) {
-        std::string theme = m_server.arg("plain").c_str();
-        if (theme == "light") {
-            m_server.send(200, "application/json", "{\"theme\":\"light\"}");
-            return;
+        String body = m_server.arg("plain");
+        if (body.indexOf("light") >= 0 || body.indexOf("glazed") >= 0) {
+            m_webctlTheme = "light";
+        } else if (body.indexOf("dark") >= 0) {
+            m_webctlTheme = "dark";
         }
     }
-    m_server.send(200, "application/json", "{\"theme\":\"dark\"}");
+    JsonDocument doc;
+    doc["ok"] = true;
+    doc["theme"] = m_webctlTheme;
+    String out;
+    serializeJson(doc, out);
+    m_server.send(200, "application/json", out);
 }
 
 void WebServerManager::handlePutUpload() {
