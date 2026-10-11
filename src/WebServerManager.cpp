@@ -1,6 +1,7 @@
 #include "WebServerManager.h"
 #include "WebUI.h"
 #include "WebCtlAssets.h"
+#include "SvsUI.h"
 #include "Guardrails.h"
 #include <iostream>
 
@@ -32,6 +33,12 @@ void WebServerManager::begin() {
     m_server.on("/", HTTP_GET, [this]() { handleRoot(); });
     m_server.on("/", HTTP_HEAD, [this]() { handleRoot(); });
     m_server.on("/", HTTP_OPTIONS, [this]() { setSecurityHeaders(); m_server.send(204); });
+    m_server.on("/svs", HTTP_GET, [this]() { handleSvsPage(); });
+    m_server.on("/rt4k", HTTP_GET, [this]() {
+        setSecurityHeaders();
+        m_server.sendHeader("Content-Encoding", "gzip");
+        m_server.send_P(200, "text/html", (PGM_P)WEBCTL_HTML_GZ, WEBCTL_HTML_GZ_LEN);
+    });
     m_server.on("/gameid", HTTP_GET, [this]() { handleGameID(); });
     m_server.on("/term", HTTP_GET, [this]() { handleGameID(); });
     m_server.on("/donut-memory", HTTP_GET, [this]() { handleDonutMemory(); });
@@ -181,8 +188,17 @@ bool WebServerManager::authenticateRequest() {
 
 void WebServerManager::handleRoot() {
     setSecurityHeaders();
+    if (m_devices.isSvsConnected() || m_devices.getRT4KBaud() == 9600) {
+        m_server.send(200, "text/html", SVS_UI_HTML);
+        return;
+    }
     m_server.sendHeader("Content-Encoding", "gzip");
     m_server.send_P(200, "text/html", (PGM_P)WEBCTL_HTML_GZ, WEBCTL_HTML_GZ_LEN);
+}
+
+void WebServerManager::handleSvsPage() {
+    setSecurityHeaders();
+    m_server.send(200, "text/html", SVS_UI_HTML);
 }
 
 void WebServerManager::handleGameID() {

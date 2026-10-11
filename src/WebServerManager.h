@@ -83,6 +83,7 @@ private:
     void handleCydExec();
 
     // SVS (Scalable Video Switch) Handlers
+    void handleSvsPage();
     void handleSvsStatus();
     void handleSvsInput();
     void handleSvsSeek();
