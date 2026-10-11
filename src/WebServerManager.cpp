@@ -1060,7 +1060,7 @@ void WebServerManager::handleCydExec() {
 void WebServerManager::handleSvsStatus() {
     setSecurityHeaders();
     JsonDocument doc;
-    doc["connected"] = m_devices.isSvsConnected() || m_devices.isUsbConnected();
+    doc["connected"] = m_devices.isSvsConnected();
     doc["firmware"] = m_devices.getSvsFirmware();
     doc["current_input"] = m_devices.getSvsCurrentInput();
     doc["total_inputs"] = m_devices.getSvsTotalInputs();
@@ -1068,6 +1068,27 @@ void WebServerManager::handleSvsStatus() {
     doc["attract"] = m_devices.getSvsAttract();
     doc["manual"] = m_devices.getSvsManualMode();
     doc["uptime"] = (millis() / 1000);
+#if defined(USB_MODE) && USB_MODE
+    doc["cdc_connected"] = CdcSerial.connected();
+    doc["usb_host_ready"] = usbHost.ready();
+    doc["svs_connected"] = m_devices.isSvsConnected();
+    doc["rt4k_baud"] = m_devices.getRT4KBaud();
+    EspUsbHostDeviceInfo devs[4];
+    size_t count = usbHost.getDevices(devs, 4);
+    doc["usb_device_count"] = count;
+    JsonArray arr = doc["usb_devices"].to<JsonArray>();
+    for (size_t i = 0; i < count; i++) {
+        JsonObject d = arr.add<JsonObject>();
+        d["vid"] = devs[i].vid;
+        d["pid"] = devs[i].pid;
+        d["addr"] = devs[i].address;
+        if (devs[i].manufacturer) d["mfg"] = devs[i].manufacturer;
+        if (devs[i].product) d["prod"] = devs[i].product;
+    }
+    doc["last_cmd"] = m_devices.getLastSvsCmd().c_str();
+    doc["last_bytes_written"] = m_devices.getLastSvsBytesWritten();
+    doc["last_rx"] = m_devices.getLastSvsRx().c_str();
+#endif
     String out;
     serializeJson(doc, out);
     m_server.send(200, "application/json", out);
@@ -1153,8 +1174,15 @@ void WebServerManager::handleSvsCommand() {
         m_server.send(400, "application/json", "{\"error\":\"Command rejected by guardrail\"}");
         return;
     }
-    m_devices.sendSvsCommand(clean);
-    m_server.send(200, "application/json", "{\"ok\":true,\"command\":\"" + String(clean.c_str()) + "\"}");
+    std::string rawResponse = m_devices.executeSvsCommandSync(clean, 500);
+    JsonDocument resp;
+    resp["ok"] = true;
+    resp["command"] = clean.c_str();
+    resp["response"] = rawResponse.c_str();
+    resp["bytesWritten"] = m_devices.getLastSvsBytesWritten();
+    String out;
+    serializeJson(resp, out);
+    m_server.send(200, "application/json", out);
 }
 #endif
 

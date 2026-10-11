@@ -64,10 +64,12 @@ void setup() {
         if (info.vid == 0x1a86) {
             // Scalable Video Switch (CH340)
             CdcSerial.begin(9600);
+            CdcSerial.setDtr(false);
+            CdcSerial.setRts(false);
             deviceMgr.setRT4KBaud(9600);
             deviceMgr.setSvsConnected(true);
             Serial.println(F("[USB Host] Detected SVS Switch (CH340 9600 baud)"));
-        } else {
+        } else if (info.vid == 0x1209 || info.vid == 0x0483) {
             // RetroTINK 4K Pro (CDC-ACM)
             CdcSerial.begin(2000000);
             deviceMgr.setRT4KBaud(2000000);
@@ -81,7 +83,9 @@ void setup() {
             Serial.println(F("[USB Host] SVS Switch Disconnected"));
         }
     });
-    CdcSerial.begin(2000000);
+    CdcSerial.begin(9600);
+    CdcSerial.setDtr(false);
+    CdcSerial.setRts(false);
     usbHost.begin();
 #endif
 
@@ -139,10 +143,30 @@ void loop() {
     webServer.handleClient();
 
 #if USB_MODE
+    static uint32_t lastUsbCheck = 0;
+    if (millis() - lastUsbCheck > 1000) {
+        lastUsbCheck = millis();
+        EspUsbHostDeviceInfo devs[2];
+        size_t count = usbHost.getDevices(devs, 2);
+        for (size_t i = 0; i < count; i++) {
+            if (devs[i].vid == 0x1a86) {
+                if (!deviceMgr.isSvsConnected() || deviceMgr.getRT4KBaud() != 9600) {
+                    deviceMgr.setSvsConnected(true);
+                    deviceMgr.setRT4KBaud(9600);
+                    CdcSerial.setDtr(false);
+                    CdcSerial.setRts(false);
+                    Serial.println(F("[USB Host] SVS Switch active (9600 baud)"));
+                }
+                break;
+            }
+        }
+    }
+
     if (deviceMgr.isSvsConnected() || deviceMgr.getRT4KBaud() == 9600) {
         static String svsLine = "";
         while (CdcSerial.available()) {
             char c = (char)CdcSerial.read();
+            deviceMgr.appendSvsRx(c);
             if (c == '\n' || c == '\r') {
                 if (svsLine.length() > 0) {
                     deviceMgr.parseSvsLine(svsLine.c_str());

@@ -373,8 +373,8 @@ void DeviceManager::setRT4KBaud(uint32_t baud) {
 #if defined(USB_MODE) && USB_MODE
     CdcSerial.setBaudRate(baud);
     if (baud == 9600) {
-        CdcSerial.setDtr(true);
-        CdcSerial.setRts(true);
+        CdcSerial.setDtr(false);
+        CdcSerial.setRts(false);
     }
 #endif
 #endif
@@ -402,19 +402,71 @@ void DeviceManager::wakeRT4K() {
 
 void DeviceManager::sendSvsCommand(const std::string& cmd) {
     std::lock_guard<std::mutex> lock(m_ioMutex);
+    m_lastSvsCmd = cmd;
 #ifdef ARDUINO
-    std::string formatted = cmd + "\r\n";
+    std::string formatted = cmd + "\r\n\r\n";
     Serial0.print(formatted.c_str());
     Serial.print(formatted.c_str());
 #if defined(USB_MODE) && USB_MODE
     if (CdcSerial.connected()) {
-        CdcSerial.write((const uint8_t*)formatted.c_str(), formatted.length());
+        if (!usbHost.serialWriteQueueReady()) {
+            usbHost.serialWriteQueueBegin(4, 256);
+        }
+        m_lastSvsBytesWritten = CdcSerial.write((const uint8_t*)formatted.c_str(), formatted.length());
         CdcSerial.flush();
     }
 #endif
 #else
     std::cout << "[Device Mock SVS] Command: " << cmd << std::endl;
 #endif
+}
+
+std::string DeviceManager::executeSvsCommandSync(const std::string& cmd, uint32_t timeoutMs) {
+    std::lock_guard<std::mutex> lock(m_ioMutex);
+    m_lastSvsCmd = cmd;
+    std::string response;
+#ifdef ARDUINO
+    std::string formatted = cmd + "\r\n\r\n";
+    Serial0.print(formatted.c_str());
+#if defined(USB_MODE) && USB_MODE
+    if (CdcSerial.connected()) {
+        while (CdcSerial.available()) {
+            CdcSerial.read();
+        }
+        if (!usbHost.serialWriteQueueReady()) {
+            usbHost.serialWriteQueueBegin(4, 256);
+        }
+        m_lastSvsBytesWritten = CdcSerial.write((const uint8_t*)formatted.c_str(), formatted.length());
+        CdcSerial.flush();
+
+        uint32_t start = millis();
+        while (millis() - start < timeoutMs) {
+            while (CdcSerial.available()) {
+                char c = (char)CdcSerial.read();
+                response += c;
+                appendSvsRx(c);
+            }
+            delay(5);
+        }
+        return response;
+    }
+#endif
+#else
+    (void)timeoutMs;
+    response = "OK (mock)";
+#endif
+    return response;
+}
+
+void DeviceManager::appendSvsRx(char c) {
+    if (m_lastSvsRx.length() >= 256) {
+        m_lastSvsRx.erase(0, 1);
+    }
+    if (c >= 32 && c <= 126) {
+        m_lastSvsRx += c;
+    } else if (c == '\n') {
+        m_lastSvsRx += ' ';
+    }
 }
 
 void DeviceManager::switchSvsInput(uint8_t input) {

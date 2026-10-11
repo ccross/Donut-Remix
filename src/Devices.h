@@ -84,6 +84,11 @@ public:
     bool getSvsPower() const { return m_svsPower; }
     bool getSvsAttract() const { return m_svsAttract; }
     bool getSvsManualMode() const { return m_svsManual; }
+    std::string executeSvsCommandSync(const std::string& cmd, uint32_t timeoutMs = 500);
+    size_t getLastSvsBytesWritten() const { return m_lastSvsBytesWritten; }
+    std::string getLastSvsCmd() const { return m_lastSvsCmd; }
+    std::string getLastSvsRx() const { return m_lastSvsRx; }
+    void appendSvsRx(char c);
 
     // HTTP Bulk PUT Session for WebCtl
     struct HttpPutSession {
@@ -129,6 +134,10 @@ private:
     bool m_serialLocked{false};
     std::string m_lockOwner;
     uint32_t m_lockToken{0};
+
+    std::string m_lastSvsCmd;
+    size_t m_lastSvsBytesWritten{0};
+    std::string m_lastSvsRx;
 
     HttpPutSession m_putSession;
     HttpPutProgressCallback m_putProgressCb;
