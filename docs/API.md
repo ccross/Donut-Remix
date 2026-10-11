@@ -266,7 +266,237 @@ Securely flash new firmware onto the ESP32.
 
 ---
 
-## 3. Backward Compatibility Endpoints
+## 3. Scalable Video Switch (SVS) Endpoints
+
+When connected to an SVS matrix switcher via USB Host (CH340 CDC @ 9,600 baud), Donut Remix exposes dedicated real-time control, output module transcoding, and serial monitoring endpoints.
+
+---
+
+### `GET /api/v1/svs/status`
+Retrieve real-time hardware status, active input, total inputs, power, attract/manual mode states, USB host peripheral telemetry, and recent serial log history.
+
+**Response (200 OK):**
+```json
+{
+  "connected": true,
+  "firmware": "1.20",
+  "current_input": 0,
+  "total_inputs": 6,
+  "power": true,
+  "attract": false,
+  "manual": false,
+  "uptime": 240,
+  "cdc_connected": true,
+  "usb_host_ready": true,
+  "svs_connected": true,
+  "rt4k_baud": 9600,
+  "usb_device_count": 1,
+  "usb_devices": [
+    {
+      "vid": 6790,
+      "pid": 29987,
+      "addr": 1,
+      "mfg": "",
+      "prod": "USB Serial"
+    }
+  ],
+  "last_cmd": "R590",
+  "last_bytes_written": 8,
+  "last_rx": "SVS CURRENT INPUT=0 SVS TOTAL INPUTS=6",
+  "serial_log": [
+    {
+      "t": 102655,
+      "d": "R",
+      "m": "SVS TOTAL INPUTS=6"
+    },
+    {
+      "t": 102666,
+      "d": "R",
+      "m": "SVS CURRENT INPUT=0"
+    }
+  ]
+}
+```
+
+*Note:* `serial_log` returns up to 30 recent log entries from the thread-safe circular buffer (`t` = uptime timestamp in ms, `d` = direction `'T'` for Transmit or `'R'` for Receive, `m` = message text).
+
+---
+
+### `POST /api/v1/svs/input`
+Switch the active SVS video input channel (0–32, where 0 indicates no active input / standby).
+
+**Request Body (JSON):**
+```json
+{
+  "input": 1
+}
+```
+*Alternative form/plain encoding:* `input=1` or raw payload `1`.
+
+**Response (200 OK):**
+```json
+{
+  "ok": true,
+  "input": 1
+}
+```
+
+---
+
+### `POST /api/v1/svs/seek`
+Seek to the next or previous input channel with an active video signal.
+
+**Request Body (JSON or URL parameters):**
+```json
+{
+  "dir": "up"
+}
+```
+*Supported values:* `"up"` (next active channel) or `"down"` (previous active channel).
+
+**Response (200 OK):**
+```json
+{
+  "ok": true,
+  "direction": "up"
+}
+```
+
+---
+
+### `POST /api/v1/svs/power`
+Turn SVS power on or enter standby mode.
+
+**Request Body (JSON or URL parameters):**
+```json
+{
+  "power": true
+}
+```
+*Supported values:* `true` / `false`, `"on"` / `"off"`.
+
+**Response (200 OK):**
+```json
+{
+  "ok": true,
+  "power": true
+}
+```
+
+---
+
+### `POST /api/v1/svs/command`
+Send a guardrail-sanitized command directly to the SVS hardware over serial and synchronously receive the hardware response.
+
+**Request Body (JSON):**
+```json
+{
+  "cmd": "SVS_Attract_Mode"
+}
+```
+*Useful commands:* `SVS_Attract_Mode`, `SVS_Manual_Mode`, `SVS_Change_Input_<N>`, `R590`, `R591`.
+
+**Response (200 OK):**
+```json
+{
+  "ok": true,
+  "command": "SVS_Attract_Mode",
+  "response": "SVS ATTRACT MODE ON",
+  "bytesWritten": 20
+}
+```
+
+---
+
+### `GET /api/v1/svs/modules`
+Query installed transcoder output module states across all SVS inputs (RGB-to-Component, Component-to-RGB, RGsB / Sync-on-Green, and Sync Bypass).
+
+**Query Parameters:**
+- `refresh=1` (optional): Query the SVS hardware immediately before returning.
+
+**Response (200 OK):**
+```json
+{
+  "ok": true,
+  "total_inputs": 6,
+  "current_input": 0,
+  "rgb_to_comp": [false, false, false, false, false, false],
+  "comp_to_rgb": [false, false, false, false, false, false],
+  "rgsb": [false, false, false, false, false, false],
+  "sync_bypass": [true, true, true, true, true, true]
+}
+```
+
+---
+
+### `POST /api/v1/svs/modules`
+Configure or toggle transcoder output modules and sync options for a specific SVS input.
+
+**Set explicit state:**
+```json
+{
+  "input": 1,
+  "type": "rgb_to_comp",
+  "enable": true
+}
+```
+*Supported types:* `rgb_to_comp`, `comp_to_rgb`, `rgsb`, `sync_bypass`.
+
+**Toggle state:**
+```json
+{
+  "input": 1,
+  "action": "toggle_rgb_to_comp"
+}
+```
+*Supported actions:* `toggle_rgb_to_comp`, `toggle_comp_to_rgb`, `toggle_rgsb`, `toggle_sync_bypass`.
+
+**Response (200 OK):**
+Returns the updated `modules` state payload matching `GET /api/v1/svs/modules`.
+
+---
+
+## 4. UI Customization & Theme Persistence
+
+### `GET /webctl-theme`
+Retrieve the active web interface theme.
+
+**Response (200 OK):**
+```json
+{
+  "ok": true,
+  "theme": "dark"
+}
+```
+*Values:* `"dark"` or `"light"` (Glazed mode).
+
+---
+
+### `POST /webctl-theme`
+Set and persist the active web interface theme to Non-Volatile Storage (NVS).
+
+**Request Body (JSON or Form URL-encoded):**
+```
+theme=light
+```
+*or JSON:*
+```json
+{
+  "theme": "light"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "ok": true,
+  "theme": "light"
+}
+```
+
+---
+
+## 5. Backward Compatibility Endpoints
 
 For compatibility with legacy scripts and home automation tools, the following endpoints remain available but are now routed through the security middleware:
 - `POST /cmd`: Accepts plain text commands (authenticated).

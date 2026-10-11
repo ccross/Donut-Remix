@@ -358,6 +358,225 @@ paths:
                   response:
                     type: string
 
+  /api/v1/svs/status:
+    get:
+      summary: SVS Hardware Status & Serial Logs
+      description: Returns real-time status of the attached Scalable Video Switch, including active channel, total channels, power state, and circular buffer serial logs.
+      responses:
+        '200':
+          description: SVS telemetry and recent serial log entries
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SvsStatusResponse'
+
+  /api/v1/svs/input:
+    post:
+      summary: Switch SVS Input Channel
+      description: Selects active SVS video input (0-32).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [input]
+              properties:
+                input:
+                  type: integer
+                  minimum: 0
+                  maximum: 32
+                  example: 1
+      responses:
+        '200':
+          description: Input switched
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  input:
+                    type: integer
+
+  /api/v1/svs/seek:
+    post:
+      summary: Seek SVS Input with Active Signal
+      description: Seeks to the next or previous channel that has an active video signal.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                dir:
+                  type: string
+                  enum: [up, down]
+                  default: up
+      responses:
+        '200':
+          description: Seek initiated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  direction:
+                    type: string
+
+  /api/v1/svs/power:
+    post:
+      summary: Set SVS Power State
+      description: Toggles SVS power state between operational and standby.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                power:
+                  type: boolean
+                  default: true
+      responses:
+        '200':
+          description: Power updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  power:
+                    type: boolean
+
+  /api/v1/svs/command:
+    post:
+      summary: Send Raw SVS Serial Command
+      description: Sends a guardrail-sanitized command directly to the SVS hardware and returns the response.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [cmd]
+              properties:
+                cmd:
+                  type: string
+                  example: "SVS_Attract_Mode"
+      responses:
+        '200':
+          description: Command executed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  command:
+                    type: string
+                  response:
+                    type: string
+                  bytesWritten:
+                    type: integer
+
+  /api/v1/svs/modules:
+    get:
+      summary: Query SVS Transcoder Output Modules
+      description: Returns state of installed transcoder output modules (RGB-to-Comp, Comp-to-RGB, RGsB, Sync Bypass).
+      parameters:
+        - name: refresh
+          in: query
+          schema:
+            type: boolean
+          description: Force immediate hardware re-query
+      responses:
+        '200':
+          description: Module states
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SvsModulesResponse'
+    post:
+      summary: Configure SVS Transcoder Modules
+      description: Enable, disable, or toggle output module transcoders for an input channel.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                input:
+                  type: integer
+                  minimum: 1
+                  maximum: 32
+                type:
+                  type: string
+                  enum: [rgb_to_comp, comp_to_rgb, rgsb, sync_bypass]
+                enable:
+                  type: boolean
+                action:
+                  type: string
+                  enum: [toggle_rgb_to_comp, toggle_comp_to_rgb, toggle_rgsb, toggle_sync_bypass]
+      responses:
+        '200':
+          description: Updated module states
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SvsModulesResponse'
+
+  /webctl-theme:
+    get:
+      summary: Get Web UI Theme
+      description: Returns current UI theme.
+      responses:
+        '200':
+          description: Theme info
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  theme:
+                    type: string
+                    enum: [dark, light]
+    post:
+      summary: Set and Persist Web UI Theme
+      description: Sets UI theme and persists it to NVS.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                theme:
+                  type: string
+                  enum: [dark, light]
+      responses:
+        '200':
+          description: Theme updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  theme:
+                    type: string
+
 components:
   securitySchemes:
     BearerAuth:
@@ -425,3 +644,94 @@ components:
           type: integer
         hostname:
           type: string
+
+    SvsStatusResponse:
+      type: object
+      properties:
+        connected:
+          type: boolean
+        firmware:
+          type: string
+        current_input:
+          type: integer
+        total_inputs:
+          type: integer
+        power:
+          type: boolean
+        attract:
+          type: boolean
+        manual:
+          type: boolean
+        uptime:
+          type: integer
+        cdc_connected:
+          type: boolean
+        usb_host_ready:
+          type: boolean
+        svs_connected:
+          type: boolean
+        rt4k_baud:
+          type: integer
+        usb_device_count:
+          type: integer
+        usb_devices:
+          type: array
+          items:
+            type: object
+            properties:
+              vid:
+                type: integer
+              pid:
+                type: integer
+              addr:
+                type: integer
+              mfg:
+                type: string
+              prod:
+                type: string
+        last_cmd:
+          type: string
+        last_bytes_written:
+          type: integer
+        last_rx:
+          type: string
+        serial_log:
+          type: array
+          items:
+            type: object
+            properties:
+              t:
+                type: integer
+                description: Timestamp in ms
+              d:
+                type: string
+                description: Direction (T or R)
+              m:
+                type: string
+                description: Log message
+
+    SvsModulesResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        total_inputs:
+          type: integer
+        current_input:
+          type: integer
+        rgb_to_comp:
+          type: array
+          items:
+            type: boolean
+        comp_to_rgb:
+          type: array
+          items:
+            type: boolean
+        rgsb:
+          type: array
+          items:
+            type: boolean
+        sync_bypass:
+          type: array
+          items:
+            type: boolean

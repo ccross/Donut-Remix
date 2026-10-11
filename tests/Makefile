@@ -28,6 +28,7 @@ test: $(TESTS)
 	./test_guardrails
 	./test_security
 	./test_config
+	./test_gameid
 
 clean:
 	rm -f $(TESTS)
