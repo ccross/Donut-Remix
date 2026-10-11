@@ -12,7 +12,7 @@ const char SVS_UI_HTML[] = R"rawliteral(<!DOCTYPE html>
     try {
       const themeCacheKey = 'donutshop.webctl.theme.' + location.host;
       const cachedTheme = localStorage.getItem(themeCacheKey) || localStorage.getItem('donutshop.webctl.theme');
-      if(cachedTheme && cachedTheme.startsWith('light')){
+      if((cachedTheme && cachedTheme.startsWith('light')) || location.search.includes('theme=light') || location.search.includes('theme=glazed')){
         document.documentElement.dataset.theme = 'light';
       }
     } catch {}
@@ -445,6 +445,8 @@ const char SVS_UI_HTML[] = R"rawliteral(<!DOCTYPE html>
     const WEBCTL_THEME_CACHE_KEY = 'donutshop.webctl.theme.' + location.host;
     const readWebCtlThemeCache = () => {
       try {
+        if(location.search.includes('theme=light') || location.search.includes('theme=glazed')) return 'light';
+        if(location.search.includes('theme=dark')) return 'dark';
         const cached = localStorage.getItem(WEBCTL_THEME_CACHE_KEY) ||
                        localStorage.getItem(WEBCTL_THEME_LEGACY_KEY) || 'dark';
         return cached.startsWith('light') ? 'light' : 'dark';
