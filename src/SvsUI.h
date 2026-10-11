@@ -911,9 +911,11 @@ const char SVS_UI_HTML[] = R"rawliteral(<!DOCTYPE html>
 
       const aBtn = document.getElementById('btn-attract');
       aBtn.className = 'btn' + (isAttract ? ' btn-active' : '');
+      aBtn.innerText = isAttract ? 'Attract: ON' : 'Attract: OFF';
 
       const mBtn = document.getElementById('btn-manual');
       mBtn.className = 'btn' + (isManual ? ' btn-active' : '');
+      mBtn.innerText = isManual ? 'Manual: Locked' : 'Manual: Normal';
     }
 
     async function pollStatus() {
