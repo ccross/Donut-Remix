@@ -104,6 +104,8 @@ void WebServerManager::begin() {
     m_server.on("/api/v1/svs/seek", HTTP_POST, [this]() { handleSvsSeek(); });
     m_server.on("/api/v1/svs/power", HTTP_POST, [this]() { handleSvsPower(); });
     m_server.on("/api/v1/svs/command", HTTP_POST, [this]() { handleSvsCommand(); });
+    m_server.on("/api/v1/svs/modules", HTTP_GET, [this]() { handleSvsModulesGet(); });
+    m_server.on("/api/v1/svs/modules", HTTP_POST, [this]() { handleSvsModulesPost(); });
 
     // CORS preflight OPTIONS handlers
     auto sendOptions = [this]() {
@@ -121,6 +123,7 @@ void WebServerManager::begin() {
     m_server.on("/api/v1/svs/seek", HTTP_OPTIONS, sendOptions);
     m_server.on("/api/v1/svs/power", HTTP_OPTIONS, sendOptions);
     m_server.on("/api/v1/svs/command", HTTP_OPTIONS, sendOptions);
+    m_server.on("/api/v1/svs/modules", HTTP_OPTIONS, sendOptions);
 
     // WebCtl & Backward Compatibility endpoints
     m_server.on("/cmd", HTTP_POST, [this]() { handleLegacyCmd(); });
@@ -1183,6 +1186,92 @@ void WebServerManager::handleSvsCommand() {
     String out;
     serializeJson(resp, out);
     m_server.send(200, "application/json", out);
+}
+
+void WebServerManager::handleSvsModulesGet() {
+    setSecurityHeaders();
+    bool refresh = m_server.hasArg("refresh");
+    m_devices.querySvsModules(refresh);
+    const auto& mods = m_devices.getSvsModules();
+
+    JsonDocument doc;
+    doc["ok"] = true;
+    uint8_t total = m_devices.getSvsTotalInputs() > 0 ? m_devices.getSvsTotalInputs() : 6;
+    doc["total_inputs"] = total;
+    doc["current_input"] = m_devices.getSvsCurrentInput();
+
+    JsonArray arrY = doc["rgb_to_comp"].to<JsonArray>();
+    JsonArray arrG = doc["comp_to_rgb"].to<JsonArray>();
+    JsonArray arrR = doc["rgsb"].to<JsonArray>();
+    JsonArray arrS = doc["sync_bypass"].to<JsonArray>();
+
+    for (uint8_t i = 0; i < total; i++) {
+        arrY.add(mods.rgbToComp[i]);
+        arrG.add(mods.compToRgb[i]);
+        arrR.add(mods.rgsb[i]);
+        arrS.add(mods.syncBypass[i]);
+    }
+
+    String out;
+    serializeJson(doc, out);
+    m_server.send(200, "application/json", out);
+}
+
+void WebServerManager::handleSvsModulesPost() {
+    setSecurityHeaders();
+    if (!m_server.hasArg("plain")) {
+        m_server.send(400, "application/json", "{\"error\":\"Missing body\"}");
+        return;
+    }
+
+    JsonDocument req;
+    DeserializationError err = deserializeJson(req, m_server.arg("plain"));
+    if (err) {
+        m_server.send(400, "application/json", "{\"error\":\"Invalid JSON\"}");
+        return;
+    }
+
+    uint8_t cur = m_devices.getSvsCurrentInput();
+    uint8_t input = req["input"].is<int>() ? (uint8_t)req["input"].as<int>() : cur;
+    if (input < 1 || input > 32) {
+        m_server.send(400, "application/json", "{\"error\":\"Invalid input index\"}");
+        return;
+    }
+
+    if (req["type"].is<const char*>()) {
+        std::string type = req["type"].as<std::string>();
+        bool enable = req["enable"].as<bool>();
+        if (type == "rgb_to_comp") {
+            m_devices.setSvsRgbToComp(input, enable);
+        } else if (type == "comp_to_rgb") {
+            m_devices.setSvsCompToRgb(input, enable);
+        } else if (type == "rgsb") {
+            m_devices.setSvsRgsb(input, enable);
+        } else if (type == "sync_bypass") {
+            m_devices.setSvsSyncBypass(input, enable);
+        } else {
+            m_server.send(400, "application/json", "{\"error\":\"Unknown type\"}");
+            return;
+        }
+    } else if (req["action"].is<const char*>()) {
+        std::string action = req["action"].as<std::string>();
+        const auto& mods = m_devices.getSvsModules();
+        if (action == "toggle_rgb_to_comp") {
+            bool curr = (input >= 1 && input <= 32) ? mods.rgbToComp[input - 1] : false;
+            m_devices.setSvsRgbToComp(input, !curr);
+        } else if (action == "toggle_comp_to_rgb") {
+            bool curr = (input >= 1 && input <= 32) ? mods.compToRgb[input - 1] : false;
+            m_devices.setSvsCompToRgb(input, !curr);
+        } else if (action == "toggle_rgsb") {
+            bool curr = (input >= 1 && input <= 32) ? mods.rgsb[input - 1] : false;
+            m_devices.setSvsRgsb(input, !curr);
+        } else if (action == "toggle_sync_bypass") {
+            bool curr = (input >= 1 && input <= 32) ? mods.syncBypass[input - 1] : true;
+            m_devices.setSvsSyncBypass(input, !curr);
+        }
+    }
+
+    handleSvsModulesGet();
 }
 #endif
 

@@ -84,6 +84,21 @@ public:
     bool getSvsPower() const { return m_svsPower; }
     bool getSvsAttract() const { return m_svsAttract; }
     bool getSvsManualMode() const { return m_svsManual; }
+    struct SvsModulesState {
+        bool rgbToComp[32]{false};
+        bool compToRgb[32]{false};
+        bool rgsb[32]{false};
+        bool syncBypass[32]{false};
+        bool loaded{false};
+    };
+
+    const SvsModulesState& getSvsModules() const { return m_svsModules; }
+    void querySvsModules(bool force = false);
+    bool setSvsRgbToComp(uint8_t input, bool enable);
+    bool setSvsCompToRgb(uint8_t input, bool enable);
+    bool setSvsRgsb(uint8_t input, bool enable);
+    bool setSvsSyncBypass(uint8_t input, bool enable);
+
     std::string executeSvsCommandSync(const std::string& cmd, uint32_t timeoutMs = 500);
     size_t getLastSvsBytesWritten() const { return m_lastSvsBytesWritten; }
     std::string getLastSvsCmd() const { return m_lastSvsCmd; }
@@ -138,6 +153,7 @@ private:
     std::string m_lastSvsCmd;
     size_t m_lastSvsBytesWritten{0};
     std::string m_lastSvsRx;
+    SvsModulesState m_svsModules;
 
     HttpPutSession m_putSession;
     HttpPutProgressCallback m_putProgressCb;

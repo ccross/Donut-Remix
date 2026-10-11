@@ -89,6 +89,8 @@ private:
     void handleSvsSeek();
     void handleSvsPower();
     void handleSvsCommand();
+    void handleSvsModulesGet();
+    void handleSvsModulesPost();
 #endif
 };
 

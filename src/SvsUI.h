@@ -203,14 +203,159 @@ const char SVS_UI_HTML[] = R"rawliteral(<!DOCTYPE html>
       display: none;
       z-index: 1000;
     }
-    footer {
-      border-top: 1px solid var(--border);
-      padding: 16px 24px;
+    .active-toggles { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+    .pill-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 6px 14px;
       font-size: 0.8rem;
+      font-weight: 600;
       color: var(--text-muted);
-      text-align: center;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
     }
-    footer a { color: var(--accent); text-decoration: none; font-weight: 600; }
+    .pill-btn:hover { background: var(--card-hover); color: var(--text); border-color: var(--text-muted); }
+    .pill-btn.active {
+      border-color: #38bdf8;
+      background: rgba(56, 189, 248, 0.15);
+      color: #38bdf8;
+    }
+    .pill-btn.active .pill-dot { background: #38bdf8; box-shadow: 0 0 6px #38bdf8; }
+    .pill-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); }
+
+    .card-badges { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+    .mod-pill {
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+    .mod-pill.active-y { background: rgba(255, 110, 32, 0.15); border-color: rgba(255, 110, 32, 0.5); color: #ff6e20; }
+    .mod-pill.active-g { background: rgba(35, 134, 54, 0.15); border-color: rgba(35, 134, 54, 0.5); color: #3fb950; }
+    .mod-pill.active-r { background: rgba(56, 189, 248, 0.15); border-color: rgba(56, 189, 248, 0.5); color: #38bdf8; }
+    .mod-pill.active-s { background: rgba(168, 85, 247, 0.15); border-color: rgba(168, 85, 247, 0.5); color: #c084fc; }
+
+    .card-actions { display: flex; align-items: center; gap: 4px; }
+    .card-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 0.85rem;
+      padding: 4px 6px;
+      border-radius: 4px;
+      transition: all 0.15s ease;
+    }
+    .card-btn:hover { color: var(--text); background: var(--border); }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      padding: 16px;
+    }
+    .modal-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      width: 100%;
+      max-width: 480px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .modal-header h3 { font-size: 1.1rem; font-weight: 700; margin: 0; }
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 1.4rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      line-height: 1;
+    }
+    .modal-close:hover { color: var(--text); }
+    .modal-body {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      max-height: 75vh;
+      overflow-y: auto;
+    }
+    .modal-footer {
+      padding: 14px 20px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      background: rgba(0, 0, 0, 0.1);
+    }
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+    .toggle-desc { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+    .switch {
+      width: 40px;
+      height: 22px;
+      appearance: none;
+      background: var(--border);
+      border-radius: 999px;
+      position: relative;
+      cursor: pointer;
+      outline: none;
+      transition: background 0.2s;
+      flex-shrink: 0;
+    }
+    .switch:checked { background: var(--accent); }
+    .switch::after {
+      content: '';
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #fff;
+      transition: transform 0.2s;
+    }
+    .switch:checked::after { transform: translateX(18px); }
+    .modal-input {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      margin-top: 4px;
+      box-sizing: border-box;
+    }
   </style>
 </head>
 <body>
@@ -236,6 +381,20 @@ const char SVS_UI_HTML[] = R"rawliteral(<!DOCTYPE html>
           <span id="hero-input-name" style="font-size: 1.2rem; font-weight: 500; color: var(--text-muted);">(--)</span>
         </div>
         <div class="hero-sub" id="hero-sub">Polling switch hardware over USB Host...</div>
+        <div class="active-toggles" id="active-toggles">
+          <button class="pill-btn" id="tog-y" onclick="toggleActiveModule('rgb_to_comp')">
+            <span class="pill-dot"></span> RGB &rarr; Comp: <strong id="tog-y-val">--</strong>
+          </button>
+          <button class="pill-btn" id="tog-g" onclick="toggleActiveModule('comp_to_rgb')">
+            <span class="pill-dot"></span> Comp &rarr; RGB: <strong id="tog-g-val">--</strong>
+          </button>
+          <button class="pill-btn" id="tog-r" onclick="toggleActiveModule('rgsb')">
+            <span class="pill-dot"></span> Sync: <strong id="tog-r-val">--</strong>
+          </button>
+          <button class="pill-btn" id="tog-s" onclick="toggleActiveModule('sync_bypass')">
+            <span class="pill-dot"></span> Sync Bypass: <strong id="tog-s-val">--</strong>
+          </button>
+        </div>
       </div>
       <div style="display: flex; gap: 8px;">
         <button class="btn btn-primary" onclick="seekInput('up')">&#9650; Seek Next Active</button>
@@ -245,7 +404,7 @@ const char SVS_UI_HTML[] = R"rawliteral(<!DOCTYPE html>
 
     <div class="section-title">
       <span>Switch Inputs (1 &ndash; 6)</span>
-      <span style="font-size: 0.8rem; font-weight: 400; color: var(--text-muted);">Click to switch directly</span>
+      <span style="font-size: 0.8rem; font-weight: 400; color: var(--text-muted);">Click to switch &bull; &#9881; for output &amp; sync settings</span>
     </div>
 
     <div class="inputs-grid" id="inputs-container">
@@ -260,10 +419,58 @@ const char SVS_UI_HTML[] = R"rawliteral(<!DOCTYPE html>
         <button id="btn-power" class="btn" onclick="togglePower()">Power: Standby</button>
         <button id="btn-attract" class="btn" onclick="toggleAttract()">Attract Mode</button>
         <button id="btn-manual" class="btn" onclick="toggleManual()">Manual Lock</button>
+        <button class="btn" onclick="fetchModules(true)">&#8635; Refresh Modules</button>
         <button class="btn" onclick="switchInput(0)" style="margin-left: auto;">Input 0 (Standby)</button>
       </div>
     </div>
   </main>
+
+  <div id="cfg-modal" class="modal-overlay" style="display:none;" onclick="closeModal(event)">
+    <div class="modal-card" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3 id="modal-title">Input Configuration</h3>
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label style="font-size:0.85rem; font-weight:600; color:var(--text-muted);">Channel Friendly Name:</label>
+          <input type="text" id="modal-name-input" class="modal-input" placeholder="e.g. SNES" />
+        </div>
+        <div class="toggle-row">
+          <div>
+            <strong>RGB to YPbPr (Component)</strong>
+            <div class="toggle-desc">Transcode RGB signal to Component output</div>
+          </div>
+          <input type="checkbox" id="modal-tog-y" class="switch" />
+        </div>
+        <div class="toggle-row">
+          <div>
+            <strong>YPbPr (Component) to RGB</strong>
+            <div class="toggle-desc">Transcode Component signal to RGB output</div>
+          </div>
+          <input type="checkbox" id="modal-tog-g" class="switch" />
+        </div>
+        <div class="toggle-row">
+          <div>
+            <strong>RGBS to RGsB (Sync-on-Green)</strong>
+            <div class="toggle-desc">Route sync onto green channel (for PVMs / SoG)</div>
+          </div>
+          <input type="checkbox" id="modal-tog-r" class="switch" />
+        </div>
+        <div class="toggle-row">
+          <div>
+            <strong>Sync Bypass (Raw CSync)</strong>
+            <div class="toggle-desc">Bypass sync cleaner for raw arcade / TTL sync</div>
+          </div>
+          <input type="checkbox" id="modal-tog-s" class="switch" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveModalConfig()">Save Settings</button>
+      </div>
+    </div>
+  </div>
 
   <div id="toast" class="toast"></div>
 
@@ -467,6 +674,117 @@ const char SVS_UI_HTML[] = R"rawliteral(<!DOCTYPE html>
       }
     }
 
+    let moduleData = {
+      rgbToComp: [],
+      compToRgb: [],
+      rgsb: [],
+      syncBypass: []
+    };
+    let modalInputIdx = 1;
+
+    async function fetchModules(force = false) {
+      try {
+        const url = '/api/v1/svs/modules' + (force ? '?refresh=1' : '');
+        const res = await authedFetch(url);
+        if (res.ok) {
+          const d = await res.json();
+          moduleData.rgbToComp = d.rgb_to_comp || [];
+          moduleData.compToRgb = d.comp_to_rgb || [];
+          moduleData.rgsb = d.rgsb || [];
+          moduleData.syncBypass = d.sync_bypass || [];
+          renderInputs();
+          updateHero();
+          if (force) showToast('Refreshed module settings from hardware');
+        }
+      } catch (e) {
+        console.error('Error fetching SVS modules:', e);
+      }
+    }
+
+    async function toggleActiveModule(type) {
+      if (currentInput <= 0) {
+        showToast('Select an active input first');
+        return;
+      }
+      try {
+        const res = await authedFetch('/api/v1/svs/modules', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'toggle_' + type, input: currentInput })
+        });
+        if (res.ok) {
+          const d = await res.json();
+          moduleData.rgbToComp = d.rgb_to_comp || [];
+          moduleData.compToRgb = d.comp_to_rgb || [];
+          moduleData.rgsb = d.rgsb || [];
+          moduleData.syncBypass = d.sync_bypass || [];
+          renderInputs();
+          updateHero();
+          showToast('Updated ' + type + ' on Input #' + currentInput);
+        } else {
+          showToast('Failed to toggle ' + type);
+        }
+      } catch (e) {
+        showToast('Error toggling module: ' + e);
+      }
+    }
+
+    function openConfigModal(e, idx) {
+      if (e) e.stopPropagation();
+      modalInputIdx = idx;
+      const title = document.getElementById('modal-title');
+      title.innerText = 'Input #' + idx + ' Settings (' + getInputName(idx) + ')';
+      
+      document.getElementById('modal-name-input').value = getInputName(idx);
+      document.getElementById('modal-tog-y').checked = !!moduleData.rgbToComp[idx - 1];
+      document.getElementById('modal-tog-g').checked = !!moduleData.compToRgb[idx - 1];
+      document.getElementById('modal-tog-r').checked = !!moduleData.rgsb[idx - 1];
+      document.getElementById('modal-tog-s').checked = !!moduleData.syncBypass[idx - 1];
+
+      document.getElementById('cfg-modal').style.display = 'flex';
+    }
+
+    function closeModal(e) {
+      if (e && e.target !== document.getElementById('cfg-modal') && e.type === 'click' && !e.target.classList.contains('modal-close') && e.target.tagName !== 'BUTTON') return;
+      document.getElementById('cfg-modal').style.display = 'none';
+    }
+
+    async function saveModalConfig() {
+      const idx = modalInputIdx;
+      const newName = document.getElementById('modal-name-input').value.trim();
+      if (newName) {
+        localStorage.setItem('svs_input_name_' + idx, newName);
+      }
+
+      const newY = document.getElementById('modal-tog-y').checked;
+      const newG = document.getElementById('modal-tog-g').checked;
+      const newR = document.getElementById('modal-tog-r').checked;
+      const newS = document.getElementById('modal-tog-s').checked;
+
+      const updates = [];
+      if (newY !== !!moduleData.rgbToComp[idx - 1]) updates.push({ type: 'rgb_to_comp', enable: newY });
+      if (newG !== !!moduleData.compToRgb[idx - 1]) updates.push({ type: 'comp_to_rgb', enable: newG });
+      if (newR !== !!moduleData.rgsb[idx - 1]) updates.push({ type: 'rgsb', enable: newR });
+      if (newS !== !!moduleData.syncBypass[idx - 1]) updates.push({ type: 'sync_bypass', enable: newS });
+
+      document.getElementById('cfg-modal').style.display = 'none';
+
+      for (const u of updates) {
+        try {
+          await authedFetch('/api/v1/svs/modules', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: u.type, input: idx, enable: u.enable })
+          });
+        } catch (e) {}
+      }
+
+      await fetchModules(false);
+      renderInputs();
+      updateHero();
+      showToast('Settings saved for Input #' + idx);
+    }
+
     function renderInputs() {
       const c = document.getElementById('inputs-container');
       c.innerHTML = '';
@@ -495,17 +813,48 @@ const char SVS_UI_HTML[] = R"rawliteral(<!DOCTYPE html>
         const labelText = document.createElement('span');
         labelText.innerText = getInputName(i);
 
+        const actions = document.createElement('div');
+        actions.className = 'card-actions';
+
+        const cfgBtn = document.createElement('button');
+        cfgBtn.className = 'card-btn';
+        cfgBtn.title = 'Configure Output & Sync Settings';
+        cfgBtn.innerHTML = '&#9881;';
+        cfgBtn.onclick = (e) => openConfigModal(e, i);
+
         const editBtn = document.createElement('button');
-        editBtn.className = 'edit-label-btn';
+        editBtn.className = 'card-btn';
         editBtn.title = 'Edit Name';
         editBtn.innerHTML = '&#9998;';
         editBtn.onclick = (e) => editName(e, i);
 
+        actions.appendChild(cfgBtn);
+        actions.appendChild(editBtn);
+
         nameRow.appendChild(labelText);
-        nameRow.appendChild(editBtn);
+        nameRow.appendChild(actions);
+
+        // Feature badges for this channel
+        const badges = document.createElement('div');
+        badges.className = 'card-badges';
+        if (moduleData.rgbToComp && moduleData.rgbToComp[i - 1]) {
+          badges.innerHTML += '<span class="mod-pill active-y">RGB&rarr;Comp</span>';
+        }
+        if (moduleData.compToRgb && moduleData.compToRgb[i - 1]) {
+          badges.innerHTML += '<span class="mod-pill active-g">Comp&rarr;RGB</span>';
+        }
+        if (moduleData.rgsb && moduleData.rgsb[i - 1]) {
+          badges.innerHTML += '<span class="mod-pill active-r">RGsB</span>';
+        }
+        if (moduleData.syncBypass && moduleData.syncBypass[i - 1]) {
+          badges.innerHTML += '<span class="mod-pill active-s">Raw Sync</span>';
+        }
 
         card.appendChild(top);
         card.appendChild(nameRow);
+        if (badges.innerHTML !== '') {
+          card.appendChild(badges);
+        }
         c.appendChild(card);
       }
     }
@@ -519,10 +868,39 @@ const char SVS_UI_HTML[] = R"rawliteral(<!DOCTYPE html>
         numElem.innerText = 'Standby';
         nameElem.innerText = '(No Input)';
         subElem.innerText = 'Switch in standby mode. Click an input card below to route video.';
+        document.getElementById('tog-y-val').innerText = '--';
+        document.getElementById('tog-g-val').innerText = '--';
+        document.getElementById('tog-r-val').innerText = '--';
+        document.getElementById('tog-s-val').innerText = '--';
+        document.getElementById('tog-y').className = 'pill-btn';
+        document.getElementById('tog-g').className = 'pill-btn';
+        document.getElementById('tog-r').className = 'pill-btn';
+        document.getElementById('tog-s').className = 'pill-btn';
       } else {
         numElem.innerText = 'Input #' + currentInput;
         nameElem.innerText = getInputName(currentInput);
         subElem.innerText = 'Active routing to SVS Output &bull; CH340 USB CDC 9600 baud';
+
+        const yOn = moduleData.rgbToComp && moduleData.rgbToComp[currentInput - 1];
+        const gOn = moduleData.compToRgb && moduleData.compToRgb[currentInput - 1];
+        const rOn = moduleData.rgsb && moduleData.rgsb[currentInput - 1];
+        const sOn = moduleData.syncBypass && moduleData.syncBypass[currentInput - 1];
+
+        const togY = document.getElementById('tog-y');
+        togY.className = 'pill-btn' + (yOn ? ' active' : '');
+        document.getElementById('tog-y-val').innerText = yOn ? 'ON' : 'OFF';
+
+        const togG = document.getElementById('tog-g');
+        togG.className = 'pill-btn' + (gOn ? ' active' : '');
+        document.getElementById('tog-g-val').innerText = gOn ? 'ON' : 'OFF';
+
+        const togR = document.getElementById('tog-r');
+        togR.className = 'pill-btn' + (rOn ? ' active' : '');
+        document.getElementById('tog-r-val').innerText = rOn ? 'RGsB (SoG)' : 'CSync (Pass)';
+
+        const togS = document.getElementById('tog-s');
+        togS.className = 'pill-btn' + (sOn ? ' active' : '');
+        document.getElementById('tog-s-val').innerText = sOn ? 'Raw Bypass' : 'Cleaned';
       }
     }
 
@@ -585,6 +963,7 @@ const char SVS_UI_HTML[] = R"rawliteral(<!DOCTYPE html>
     renderInputs();
     updateHero();
     pollStatus();
+    fetchModules(false);
     setInterval(pollStatus, 1500);
   </script>
 </body>

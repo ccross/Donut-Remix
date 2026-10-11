@@ -1,6 +1,7 @@
 #include "Devices.h"
 #include <iostream>
 #include <cstring>
+#include <sstream>
 
 #ifdef ARDUINO
 #include <Arduino.h>
@@ -536,6 +537,170 @@ void DeviceManager::parseSvsLine(const std::string& line) {
             m_svsCurrentInput = (uint8_t)std::atoi(line.c_str() + idx + 1);
         }
     }
+}
+
+[[maybe_unused]] static int extractSvsNumber(const std::string& resp) {
+    std::stringstream ss(resp);
+    std::string line;
+    int lastVal = -1;
+    while (std::getline(ss, line)) {
+        while (!line.empty() && (line.back() == '\r' || line.back() == ' ' || line.back() == '\n')) {
+            line.pop_back();
+        }
+        if (line.empty() || line.rfind("SVS", 0) == 0) continue;
+        int val = std::atoi(line.c_str());
+        lastVal = val;
+    }
+    return lastVal;
+}
+
+void DeviceManager::querySvsModules(bool force) {
+    if (m_svsModules.loaded && !force) return;
+#ifdef ARDUINO
+    if (!m_svsConnected && getRT4KBaud() != 9600) return;
+
+    uint8_t total = m_svsTotalInputs > 0 ? m_svsTotalInputs : 6;
+    if (total > 32) total = 32;
+
+    executeSvsCommandSync("Y0", 80);
+    executeSvsCommandSync("G0", 80);
+
+    for (uint8_t i = 1; i <= total; i++) {
+        std::string resp = executeSvsCommandSync("Y" + std::to_string(i), 120);
+        int val = extractSvsNumber(resp);
+        m_svsModules.rgbToComp[i - 1] = (val == 0);
+    }
+
+    for (uint8_t i = 1; i <= total; i++) {
+        std::string resp = executeSvsCommandSync("G" + std::to_string(i), 120);
+        int val = extractSvsNumber(resp);
+        m_svsModules.compToRgb[i - 1] = (val == 0);
+    }
+
+    uint8_t numBlocks = (total + 7) / 8;
+    for (uint8_t b = 0; b < numBlocks; b++) {
+        std::string resp = executeSvsCommandSync("R" + std::to_string(550 + b), 120);
+        int val = extractSvsNumber(resp);
+        if (val >= 0) {
+            for (uint8_t j = 0; j < 8; j++) {
+                uint8_t idx = b * 8 + j;
+                if (idx < total) {
+                    m_svsModules.rgsb[idx] = (((val >> j) & 1) == 0);
+                }
+            }
+        }
+    }
+
+    for (uint8_t b = 0; b < numBlocks; b++) {
+        std::string resp = executeSvsCommandSync("R" + std::to_string(590 + b), 120);
+        int val = extractSvsNumber(resp);
+        if (val >= 0) {
+            for (uint8_t j = 0; j < 8; j++) {
+                uint8_t idx = b * 8 + j;
+                if (idx < total) {
+                    m_svsModules.syncBypass[idx] = (((val >> j) & 1) == 1);
+                }
+            }
+        }
+    }
+#endif
+    m_svsModules.loaded = true;
+}
+
+bool DeviceManager::setSvsRgbToComp(uint8_t input, bool enable) {
+    if (input < 1 || input > (m_svsTotalInputs > 0 ? m_svsTotalInputs : 6)) return false;
+    uint8_t prev = m_svsCurrentInput;
+    if (input == prev) {
+        sendSvsCommand(enable ? "SVS_RGB_Comp_ON" : "SVS_RGB_Comp_OFF");
+    } else {
+        sendSvsCommand("SVS_Digital_Parallel_OFF");
+#ifdef ARDUINO
+        delay(50);
+#endif
+        sendSvsCommand("SVS_Change_Input_" + std::to_string(input));
+#ifdef ARDUINO
+        delay(60);
+#endif
+        sendSvsCommand(enable ? "SVS_RGB_Comp_ON" : "SVS_RGB_Comp_OFF");
+#ifdef ARDUINO
+        delay(60);
+#endif
+        if (prev > 0) {
+            sendSvsCommand("SVS_Change_Input_" + std::to_string(prev));
+        }
+    }
+    m_svsModules.rgbToComp[input - 1] = enable;
+    return true;
+}
+
+bool DeviceManager::setSvsCompToRgb(uint8_t input, bool enable) {
+    if (input < 1 || input > (m_svsTotalInputs > 0 ? m_svsTotalInputs : 6)) return false;
+    uint8_t prev = m_svsCurrentInput;
+    if (input == prev) {
+        sendSvsCommand(enable ? "SVS_Comp_RGB_ON" : "SVS_Comp_RGB_OFF");
+    } else {
+        sendSvsCommand("SVS_Digital_Parallel_OFF");
+#ifdef ARDUINO
+        delay(50);
+#endif
+        sendSvsCommand("SVS_Change_Input_" + std::to_string(input));
+#ifdef ARDUINO
+        delay(60);
+#endif
+        sendSvsCommand(enable ? "SVS_Comp_RGB_ON" : "SVS_Comp_RGB_OFF");
+#ifdef ARDUINO
+        delay(60);
+#endif
+        if (prev > 0) {
+            sendSvsCommand("SVS_Change_Input_" + std::to_string(prev));
+        }
+    }
+    m_svsModules.compToRgb[input - 1] = enable;
+    return true;
+}
+
+bool DeviceManager::setSvsRgsb(uint8_t input, bool enable) {
+    uint8_t total = m_svsTotalInputs > 0 ? m_svsTotalInputs : 6;
+    if (input < 1 || input > total) return false;
+    uint8_t block = (input - 1) / 8;
+    uint16_t addr = 550 + block;
+    m_svsModules.rgsb[input - 1] = enable;
+
+    uint8_t val = 0;
+    for (uint8_t j = 0; j < 8; j++) {
+        uint8_t idx = block * 8 + j;
+        bool isOn = (idx < total) ? m_svsModules.rgsb[idx] : false;
+        if (!isOn) {
+            val |= (1 << j); // 1 = OFF, 0 = ON
+        }
+    }
+
+    char buf[16];
+    snprintf(buf, sizeof(buf), "W%03u%u", val, (unsigned int)addr);
+    sendSvsCommand(buf);
+    return true;
+}
+
+bool DeviceManager::setSvsSyncBypass(uint8_t input, bool enable) {
+    uint8_t total = m_svsTotalInputs > 0 ? m_svsTotalInputs : 6;
+    if (input < 1 || input > total) return false;
+    uint8_t block = (input - 1) / 8;
+    uint16_t addr = 590 + block;
+    m_svsModules.syncBypass[input - 1] = enable;
+
+    uint8_t val = 0;
+    for (uint8_t j = 0; j < 8; j++) {
+        uint8_t idx = block * 8 + j;
+        bool isOn = (idx < total) ? m_svsModules.syncBypass[idx] : true;
+        if (isOn) {
+            val |= (1 << j); // 1 = ON, 0 = OFF
+        }
+    }
+
+    char buf[16];
+    snprintf(buf, sizeof(buf), "W%03u%u", val, (unsigned int)addr);
+    sendSvsCommand(buf);
+    return true;
 }
 
 } // namespace DonutRemix
