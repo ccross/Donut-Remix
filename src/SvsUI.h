@@ -8,686 +8,536 @@ const char SVS_UI_HTML[] = R"rawliteral(<!DOCTYPE html>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Donut Remix | SVS Switch Controller</title>
+  <script>
+    try {
+      const themeCacheKey = 'donutshop.webctl.theme.' + location.host;
+      const cachedTheme = localStorage.getItem(themeCacheKey) || localStorage.getItem('donutshop.webctl.theme');
+      if(cachedTheme && cachedTheme.startsWith('light')){
+        document.documentElement.dataset.theme = 'light';
+      }
+    } catch {}
+  </script>
   <style>
-    :root, [data-theme="dark"] {
-      --bg: #101216;
-      --card-bg: #181b22;
-      --card-hover: #222631;
-      --border: #282d3b;
-      --text: #e6edf3;
-      --text-muted: #8b949e;
-      --accent: #ff6e20;
-      --accent-glow: rgba(255, 110, 32, 0.25);
-      --success: #238636;
-      --active-border: #38bdf8;
-      --active-glow: rgba(56, 189, 248, 0.35);
-      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      --mono: ui-monospace, 'Cascadia Code', 'JetBrains Mono', Consolas, monospace;
-      --terminal-bg: #0b0e14;
-      --terminal-border: #242c3d;
-    }
-    [data-theme="glazed"] {
-      --bg: #0b0e14;
-      --bg-gradient: radial-gradient(circle at 12% 10%, rgba(118, 205, 224, 0.22), transparent 35%), radial-gradient(circle at 86% 14%, rgba(222, 176, 224, 0.20), transparent 35%), linear-gradient(135deg, #0d1117 0%, #151b23 100%);
-      --card-bg: rgba(20, 25, 38, 0.85);
-      --card-hover: rgba(28, 35, 52, 0.95);
-      --border: rgba(255, 61, 129, 0.3);
-      --text: #dfe5f1;
-      --text-muted: #8b94ab;
-      --accent: #ff3d81;
-      --accent-glow: rgba(255, 61, 129, 0.35);
-      --success: #3dffa4;
-      --active-border: #3dd9ff;
-      --active-glow: rgba(61, 217, 255, 0.45);
-      --terminal-bg: rgba(11, 14, 20, 0.95);
-      --terminal-border: rgba(61, 217, 255, 0.35);
-    }
-    [data-theme="light"] {
-      --bg: #f6f8fa;
-      --card-bg: #ffffff;
-      --card-hover: #f3f4f6;
-      --border: #d0d7de;
-      --text: #1f2328;
-      --text-muted: #656d76;
-      --accent: #d97706;
-      --accent-glow: rgba(217, 119, 6, 0.2);
-      --success: #1a7f37;
-      --active-border: #0284c7;
-      --active-glow: rgba(2, 132, 199, 0.25);
-      --terminal-bg: #f6f8fa;
-      --terminal-border: #d0d7de;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: var(--font); }
-    body { background: var(--bg); background-image: var(--bg-gradient, none); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; }
-    
-    .theme-menu-container { position: relative; }
-    .theme-dropdown {
-      position: absolute;
-      top: calc(100% + 6px);
-      right: 0;
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 6px;
-      min-width: 140px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-      z-index: 1000;
-      backdrop-filter: blur(12px);
-    }
-    .theme-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 7px 10px;
-      border-radius: 6px;
-      font-size: 0.85rem;
-      font-weight: 500;
-      cursor: pointer;
-      color: var(--text);
-      transition: background 0.12s;
-    }
-    .theme-item:hover { background: var(--card-hover); }
-    .theme-item.selected { font-weight: 700; color: var(--accent); }
-    .theme-check { margin-left: auto; font-size: 0.85rem; visibility: hidden; }
-    .theme-item.selected .theme-check { visibility: visible; }
-    .swatch { width: 10px; height: 10px; border-radius: 50%; border: 1px solid var(--border); }
-    .swatch-dark { background: #181b22; }
-    .swatch-glazed { background: linear-gradient(135deg, #ff3d81, #3dd9ff); }
-    .swatch-light { background: #ffffff; }
+  :root{
+    --bg:#0b0e14; --bg2:#0f131c; --card:#141926; --card2:#1a2030;
+    --line:#232b3d; --line2:#2d3750;
+    --txt:#dfe5f1; --dim:#8b94ab; --faint:#5a6379;
+    --pink:#ff3d81; --pink2:#ff6da1; --cyan:#3dd9ff; --grn:#3dffa4;
+    --amber:#ffc53d; --red:#ff5d5d;
+    --mono:ui-monospace,'Cascadia Code','JetBrains Mono',Consolas,monospace;
+    --sans:'Segoe UI Variable','Segoe UI',system-ui,-apple-system,sans-serif;
+    --rad:12px; --rad-s:8px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  [hidden]{display:none!important}
+  html,body{height:100%}
+  body{background:var(--bg);color:var(--txt);font:14px/1.5 var(--sans);overflow-x:hidden}
+  ::selection{background:#ff3d8140}
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-thumb{background:#2a3348;border-radius:6px;border:2px solid var(--bg)}
+  ::-webkit-scrollbar-track{background:transparent}
+  button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+  input,select,textarea{font:inherit;color:var(--txt);background:var(--bg2);border:1px solid var(--line);
+    border-radius:var(--rad-s);padding:7px 10px;outline:none}
+  input:focus,select:focus,textarea:focus{border-color:var(--pink)}
+  input::placeholder{color:var(--faint)}
+  input[type=checkbox]{accent-color:var(--pink);width:15px;height:15px}
 
-    .terminal-card {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 20px;
-      margin-bottom: 24px;
-    }
-    .terminal-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-bottom: 12px;
-    }
-    .terminal-title {
-      font-size: 1.05rem;
-      font-weight: 700;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .terminal-controls {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      font-size: 0.8rem;
-      color: var(--text-muted);
-    }
-    .terminal-controls label {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      cursor: pointer;
-      user-select: none;
-    }
-    .terminal-log {
-      font-family: var(--mono);
-      font-size: 0.82rem;
-      line-height: 1.6;
-      background: var(--terminal-bg);
-      border: 1px solid var(--terminal-border);
-      border-radius: 8px;
-      padding: 12px 16px;
-      height: 220px;
-      overflow-y: auto;
-      white-space: pre-wrap;
-      word-break: break-all;
-    }
-    .cl-tx { color: #38bdf8; }
-    .cl-rx { color: #4ade80; }
-    .cl-sys { color: #94a3b8; font-style: italic; }
-    .cl-err { color: #f87171; }
-    .cl-time { color: var(--text-muted); opacity: 0.6; user-select: none; margin-right: 6px; font-size: 0.75rem; }
-    .terminal-form {
-      display: flex;
-      gap: 10px;
-      margin-top: 12px;
-    }
-    .terminal-input {
-      flex: 1;
-      font-family: var(--mono);
-      font-size: 0.85rem;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      color: var(--text);
-      padding: 8px 12px;
-      border-radius: 6px;
-      outline: none;
-    }
-    .terminal-input:focus {
-      border-color: var(--accent);
-    }
-    .terminal-chips {
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-      margin-top: 10px;
-    }
-    .tchip {
-      font-family: var(--mono);
-      font-size: 0.75rem;
-      border: 1px solid var(--border);
-      background: rgba(255, 255, 255, 0.04);
-      border-radius: 999px;
-      padding: 3px 10px;
-      color: var(--text-muted);
-      cursor: pointer;
-      transition: all 0.15s ease;
-    }
-    .tchip:hover {
-      color: var(--text);
-      border-color: var(--text-muted);
-      background: var(--card-hover);
-    }
-    header {
-      background: var(--card-bg);
-      border-bottom: 1px solid var(--border);
-      padding: 14px 24px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 12px;
-    }
-    .logo-group { display: flex; align-items: center; gap: 12px; }
-    .logo-icon { font-size: 1.5rem; }
-    .logo-text { font-size: 1.2rem; font-weight: 700; letter-spacing: -0.02em; }
-    .logo-text span { color: var(--accent); }
-    .header-badges { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      padding: 4px 10px;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid var(--border);
-      color: var(--text-muted);
-    }
-    .badge.connected { border-color: rgba(35, 134, 54, 0.5); color: #3fb950; background: rgba(35, 134, 54, 0.1); }
-    .badge.connected .dot { background: #3fb950; box-shadow: 0 0 8px #3fb950; }
-    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted); }
-    
-    main { flex: 1; padding: 24px; max-width: 1000px; margin: 0 auto; width: 100%; }
-    
-    .hero-card {
-      background: linear-gradient(135deg, rgba(255, 110, 32, 0.08) 0%, rgba(56, 189, 248, 0.04) 100%), var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 24px;
-      margin-bottom: 24px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 20px;
-    }
-    .hero-info { display: flex; flex-direction: column; gap: 6px; }
-    .hero-label { font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
-    .hero-value { font-size: 2.2rem; font-weight: 800; letter-spacing: -0.02em; display: flex; align-items: center; gap: 12px; }
-    .hero-sub { font-size: 0.9rem; color: var(--text-muted); }
-    
-    .section-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; }
-    .inputs-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-      gap: 16px;
-      margin-bottom: 28px;
-    }
-    .input-card {
-      background: var(--card-bg);
-      border: 2px solid var(--border);
-      border-radius: 12px;
-      padding: 18px 20px;
-      cursor: pointer;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-      position: relative;
-      overflow: hidden;
-    }
-    .input-card:hover {
-      background: var(--card-hover);
-      border-color: rgba(255, 110, 32, 0.4);
-      transform: translateY(-2px);
-    }
-    .input-card.active {
-      border-color: var(--active-border);
-      background: rgba(56, 189, 248, 0.08);
-      box-shadow: 0 0 20px var(--active-glow);
-    }
-    .input-card.active::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      height: 4px;
-      background: var(--active-border);
-    }
-    .card-top { display: flex; align-items: center; justify-content: space-between; }
-    .input-num {
-      font-size: 1.4rem;
-      font-weight: 800;
-      letter-spacing: -0.02em;
-    }
-    .input-status-pill {
-      font-size: 0.7rem;
-      font-weight: 700;
-      padding: 3px 8px;
-      border-radius: 999px;
-      background: var(--border);
-      color: var(--text-muted);
-      text-transform: uppercase;
-    }
-    .input-card.active .input-status-pill {
-      background: var(--active-border);
-      color: #0b1120;
-    }
-    .input-name {
-      font-size: 1.05rem;
-      font-weight: 600;
-      color: var(--text);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .edit-label-btn {
-      background: none;
-      border: none;
-      color: var(--text-muted);
-      cursor: pointer;
-      font-size: 0.85rem;
-      padding: 4px;
-      border-radius: 4px;
-    }
-    .edit-label-btn:hover { color: var(--text); background: var(--border); }
-    
-    .controls-panel {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 20px;
-      margin-bottom: 24px;
-    }
-    .btn-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
-    .btn {
-      background: var(--border);
-      color: var(--text);
-      border: 1px solid transparent;
-      padding: 10px 16px;
-      border-radius: 8px;
-      font-size: 0.9rem;
-      font-weight: 600;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      transition: all 0.15s ease;
-    }
-    .btn:hover { background: var(--card-hover); border-color: var(--text-muted); }
-    .btn:active { transform: scale(0.98); }
-    .btn-primary { background: var(--accent); color: #fff; }
-    .btn-primary:hover { background: #e05d15; }
-    .btn-active { background: rgba(56, 189, 248, 0.2); border-color: var(--active-border); color: var(--active-border); }
+  /* ---------- shell ---------- */
+  #app{display:flex;flex-direction:column;min-height:100vh}
+  #topbar{display:flex;align-items:center;gap:14px;padding:0 18px;background:var(--bg2);
+    border-bottom:1px solid var(--line);height:56px;z-index:5;flex-shrink:0}
+  #logo{display:flex;align-items:baseline;gap:8px;user-select:none}
+  #logo b{font-size:17px;letter-spacing:.5px}
+  #logo b i{color:var(--pink);font-style:normal}
+  #logo span{color:var(--faint);font-size:11px;font-family:var(--mono)}
+  #content{flex:1;overflow:auto;padding:20px 24px;max-width:1100px;margin:0 auto;width:100%}
 
-    .toast {
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      padding: 12px 20px;
-      border-radius: 8px;
-      font-size: 0.9rem;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
-      display: none;
-      z-index: 1000;
-    }
-    .active-toggles { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
-    .pill-btn {
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid var(--border);
-      border-radius: 999px;
-      padding: 6px 14px;
-      font-size: 0.8rem;
-      font-weight: 600;
-      color: var(--text-muted);
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      transition: all 0.15s ease;
-    }
-    .pill-btn:hover { background: var(--card-hover); color: var(--text); border-color: var(--text-muted); }
-    .pill-btn.active {
-      border-color: #38bdf8;
-      background: rgba(56, 189, 248, 0.15);
-      color: #38bdf8;
-    }
-    .pill-btn.active .pill-dot { background: #38bdf8; box-shadow: 0 0 6px #38bdf8; }
-    .pill-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); }
+  /* ---------- topbar widgets ---------- */
+  .chip{display:inline-flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--line);
+    border-radius:999px;padding:3px 11px;font-size:12px;color:var(--dim);white-space:nowrap}
+  .chip b{color:var(--txt);font-weight:600;font-family:var(--mono)}
+  #dot{width:9px;height:9px;border-radius:50%;background:var(--faint);flex:none;transition:background .2s}
+  #dot.ok{background:var(--grn);box-shadow:0 0 8px #3dffa480}
+  #dot.busy{background:#ffc53d;box-shadow:0 0 8px #ffc53d80}
 
-    .card-badges { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
-    .mod-pill {
-      font-size: 0.65rem;
-      font-weight: 700;
-      padding: 2px 6px;
-      border-radius: 4px;
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid var(--border);
-      color: var(--text-muted);
-    }
-    .mod-pill.active-y { background: rgba(255, 110, 32, 0.15); border-color: rgba(255, 110, 32, 0.5); color: #ff6e20; }
-    .mod-pill.active-g { background: rgba(35, 134, 54, 0.15); border-color: rgba(35, 134, 54, 0.5); color: #3fb950; }
-    .mod-pill.active-r { background: rgba(56, 189, 248, 0.15); border-color: rgba(56, 189, 248, 0.5); color: #38bdf8; }
-    .mod-pill.active-s { background: rgba(168, 85, 247, 0.15); border-color: rgba(168, 85, 247, 0.5); color: #c084fc; }
+  .fast-tip{position:relative}
+  .fast-tip::after{
+    content:attr(data-tip);
+    position:absolute;
+    top:calc(100% + 9px);
+    left:50%;
+    transform:translate(-50%,-2px);
+    z-index:9999;
+    min-width:max-content;
+    max-width:260px;
+    padding:7px 9px;
+    border:1px solid var(--line2);
+    border-radius:7px;
+    background:var(--bg2);
+    color:var(--txt);
+    box-shadow:0 8px 20px #0008;
+    font-size:11.5px;
+    font-weight:500;
+    line-height:1.45;
+    white-space:pre-line;
+    overflow-wrap:anywhere;
+    opacity:0;
+    visibility:hidden;
+    pointer-events:none;
+    transition:opacity .12s,visibility .12s,transform .12s;
+  }
+  .fast-tip:hover::after,.fast-tip:focus-visible::after{
+    opacity:1;visibility:visible;transform:translate(-50%,0);transition-delay:250ms
+  }
 
-    .card-actions { display: flex; align-items: center; gap: 4px; }
-    .card-btn {
-      background: none;
-      border: none;
-      color: var(--text-muted);
-      cursor: pointer;
-      font-size: 0.85rem;
-      padding: 4px 6px;
-      border-radius: 4px;
-      transition: all 0.15s ease;
-    }
-    .card-btn:hover { color: var(--text); background: var(--border); }
+  /* ---------- buttons ---------- */
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;background:var(--card);
+    border:1px solid var(--line2);border-radius:var(--rad-s);padding:7px 15px;font-weight:600;
+    transition:background .12s,border-color .12s,transform .05s;white-space:nowrap;color:var(--txt)}
+  .btn:hover{background:var(--card2);border-color:#3a4666}
+  .btn:active{transform:translateY(1px)}
+  .btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+  .btn.pri{background:linear-gradient(135deg,#ff3d81,#d92e6b);border-color:transparent;color:#fff}
+  .btn.pri:hover{background:linear-gradient(135deg,#ff5591,#e63a77)}
+  .btn.danger{border-color:#ff5d5d55;color:var(--red)}
+  .btn.danger:hover{background:#ff5d5d18;border-color:var(--red)}
+  .btn.ghost{border-color:transparent;color:var(--dim)}
+  .btn.ghost:hover{color:var(--txt);background:var(--card)}
+  .btn.sm{padding:4px 10px;font-size:12.5px;font-weight:500}
+  .btn.on{border-color:var(--cyan);background:rgba(61,217,255,0.12);color:var(--cyan);font-weight:650}
 
-    .modal-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.7);
-      backdrop-filter: blur(4px);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 2000;
-      padding: 16px;
-    }
-    .modal-card {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      width: 100%;
-      max-width: 480px;
-      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-    }
-    .modal-header {
-      padding: 16px 20px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .modal-header h3 { font-size: 1.1rem; font-weight: 700; margin: 0; }
-    .modal-close {
-      background: none;
-      border: none;
-      font-size: 1.4rem;
-      color: var(--text-muted);
-      cursor: pointer;
-      line-height: 1;
-    }
-    .modal-close:hover { color: var(--text); }
-    .modal-body {
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-      max-height: 75vh;
-      overflow-y: auto;
-    }
-    .modal-footer {
-      padding: 14px 20px;
-      border-top: 1px solid var(--border);
-      display: flex;
-      justify-content: flex-end;
-      gap: 10px;
-      background: rgba(0, 0, 0, 0.1);
-    }
-    .toggle-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 12px 14px;
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-    }
-    .toggle-desc { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
-    .switch {
-      width: 40px;
-      height: 22px;
-      appearance: none;
-      background: var(--border);
-      border-radius: 999px;
-      position: relative;
-      cursor: pointer;
-      outline: none;
-      transition: background 0.2s;
-      flex-shrink: 0;
-    }
-    .switch:checked { background: var(--accent); }
-    .switch::after {
-      content: '';
-      position: absolute;
-      top: 3px;
-      left: 3px;
-      width: 16px;
-      height: 16px;
-      border-radius: 50%;
-      background: #fff;
-      transition: transform 0.2s;
-    }
-    .switch:checked::after { transform: translateX(18px); }
-    .modal-input {
-      width: 100%;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      color: var(--text);
-      padding: 8px 12px;
-      border-radius: 6px;
-      font-size: 0.9rem;
-      margin-top: 4px;
-      box-sizing: border-box;
-    }
+  /* ---------- theme control ---------- */
+  #themecontrol{margin-left:auto;position:relative;display:flex;align-items:center;white-space:nowrap}
+  #themebtn{padding:5px 9px;font-size:11.5px}
+  #theme-panel{
+    position:absolute;right:0;top:calc(100% + 8px);z-index:120;width:max-content;min-width:120px;padding:10px;
+    border:1px solid var(--line2);border-radius:10px;background:var(--card2);
+    box-shadow:0 16px 42px #0007;color:var(--txt);white-space:normal
+  }
+  #theme-panel[hidden]{display:none}
+  .theme-choice-row{display:flex;flex-direction:column;gap:5px}
+  .theme-choice{width:100%;padding:6px 10px;font-size:11.5px;text-align:left}
+  .theme-choice.on{border-color:var(--cyan);box-shadow:inset 0 0 0 1px var(--cyan)}
+
+  /* ---------- cards / layout ---------- */
+  .grid{display:grid;gap:16px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--rad);padding:16px 18px;min-width:0}
+  .card h3{font-size:11.5px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;
+    color:var(--faint);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+  .card h3 .spacer{flex:1}
+  .hint{color:var(--faint);font-size:11.5px;line-height:1.55}
+  .hint b{color:var(--dim)}
+  .sep{height:1px;background:var(--line);margin:12px 0}
+  .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .mono{font-family:var(--mono)}
+  .pill{font-size:10.5px;font-family:var(--mono);border:1px solid var(--line2);border-radius:5px;
+    padding:1px 6px;color:var(--dim)}
+  .pill.live{color:var(--grn);border-color:#3dffa444}
+  .pill.warn{color:var(--amber);border-color:#ffc53d44}
+  .pill.cyan{color:var(--cyan);border-color:rgba(61,217,255,0.44)}
+
+  /* ---------- hero & input cards ---------- */
+  .hero-top{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px}
+  .hero-val{font-size:24px;font-weight:750;letter-spacing:-.02em;display:flex;align-items:center;gap:10px;margin:4px 0}
+  .hero-val #hero-input-num{color:var(--cyan)}
+  .hero-val #hero-input-name{color:var(--txt);font-weight:600;font-size:19px}
+  .hero-actions{display:flex;gap:8px;align-items:center}
+  .mod-toggles{display:flex;flex-wrap:wrap;gap:8px}
+  .pill-dot{width:6px;height:6px;border-radius:50%;background:var(--dim);display:inline-block;margin-right:4px}
+  .btn.on .pill-dot{background:var(--cyan);box-shadow:0 0 6px var(--cyan)}
+
+  .inputs-grid{grid-template-columns:repeat(auto-fit,minmax(220px,1fr));margin-top:10px}
+  .input-card{
+    background:var(--card);border:1.5px solid var(--line);border-radius:var(--rad);
+    padding:14px 16px;cursor:pointer;display:flex;flex-direction:column;gap:8px;
+    transition:all .15s ease;position:relative;overflow:hidden;user-select:none;
+  }
+  .input-card:hover{background:var(--card2);border-color:var(--line2);transform:translateY(-2px)}
+  .input-card.active{
+    border-color:var(--cyan);background:rgba(61,217,255,0.06);
+    box-shadow:0 0 16px rgba(61,217,255,0.18)
+  }
+  .input-card.active::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:var(--cyan)}
+  .input-card-head{display:flex;align-items:center;justify-content:space-between}
+  .input-card-num{font-family:var(--mono);font-size:15px;font-weight:750;color:var(--dim)}
+  .input-card.active .input-card-num{color:var(--cyan)}
+  .input-card-title{font-size:14px;font-weight:600;color:var(--txt);display:flex;align-items:center;justify-content:space-between}
+  .input-card-badges{display:flex;flex-wrap:wrap;gap:4px;margin-top:2px}
+  .mod-badge{font-size:9.5px;font-family:var(--mono);padding:1px 5px;border-radius:4px;border:1px solid var(--line2);color:var(--dim)}
+  .mod-badge.y{color:var(--amber);border-color:rgba(255,197,61,0.4);background:rgba(255,197,61,0.08)}
+  .mod-badge.g{color:var(--grn);border-color:rgba(61,255,164,0.4);background:rgba(61,255,164,0.08)}
+  .mod-badge.r{color:var(--cyan);border-color:rgba(61,217,255,0.4);background:rgba(61,217,255,0.08)}
+  .mod-badge.s{color:var(--pink);border-color:rgba(255,61,129,0.4);background:rgba(255,61,129,0.08)}
+
+  /* ---------- console ---------- */
+  #conlog{font-family:var(--mono);font-size:12.3px;line-height:1.62;background:var(--bg2);
+    border:1px solid var(--line);border-radius:var(--rad);padding:12px 16px;height:240px;
+    overflow:auto;white-space:pre-wrap;word-break:break-all}
+  .cl-tx{color:var(--cyan)} .cl-rx{color:var(--txt)} .cl-mcu{color:var(--amber)}
+  .cl-sys{color:var(--faint);font-style:italic} .cl-err{color:var(--red)}
+  .cl-wire{color:#6a7590} .cl-t{color:#4a5468;user-select:none;margin-right:6px}
+  #conform{display:flex;gap:10px;margin-top:12px}
+  #coninput{flex:1;font-family:var(--mono)}
+  .qchips{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+  .qchip{font-family:var(--mono);font-size:11.5px;border:1px solid var(--line);border-radius:999px;
+    padding:3px 11px;color:var(--dim)}
+  .qchip:hover{color:var(--txt);border-color:var(--line2);background:var(--card2)}
+
+  /* ---------- toasts / modal ---------- */
+  #toasts{position:fixed;right:20px;bottom:20px;display:flex;flex-direction:column;gap:8px;z-index:60}
+  .toast{background:var(--card2);border:1px solid var(--line2);border-left:3px solid var(--cyan);
+    border-radius:var(--rad-s);padding:10px 15px;max-width:420px;font-size:13px;
+    box-shadow:0 8px 30px #0009;animation:tin .18s ease-out}
+  .toast.err{border-left-color:var(--red)} .toast.ok{border-left-color:var(--grn)}
+  .toast.warn{border-left-color:var(--amber)}
+  @keyframes tin{from{transform:translateY(8px);opacity:0}}
+  #modalwrap{position:fixed;inset:0;background:#000a;display:none;align-items:center;
+    justify-content:center;z-index:90;backdrop-filter:blur(2px)}
+  #modalwrap.on{display:flex}
+  #modal{background:var(--card);border:1px solid var(--line2);border-radius:var(--rad);
+    padding:22px 24px;width:min(480px,90vw);box-shadow:0 20px 60px #000c}
+  #modal h4{font-size:15px;margin-bottom:6px}
+  #modal p{color:var(--dim);font-size:13px;margin-bottom:12px;line-height:1.55}
+  #modalbtns{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
+
+  /* ---------- GLAZED LIGHT THEME ---------- */
+  html[data-theme="light"]{
+    color-scheme:light;
+    --bg:#e0e6ea;
+    --bg2:rgba(233,237,239,.79);
+    --card:rgba(255,255,255,.62);
+    --card2:rgba(246,249,251,.78);
+    --line:rgba(112,125,134,.22);
+    --line2:rgba(100,114,124,.34);
+    --txt:#111318;
+    --dim:#555d63;
+    --faint:#7e878d;
+    --pink:#d93672;
+    --pink2:#e45c8d;
+    --cyan:#087f9d;
+    --grn:#118b5b;
+    --amber:#a56f00;
+    --red:#d64545;
+
+    --glz-body-a:#dde6e9;
+    --glz-body-b:#eaecef;
+    --glz-body-c:#dee5eb;
+    --glz-topbar-bg:rgba(249,251,252,.70);
+    --glz-topbar-border:rgba(255,255,255,.78);
+    --glz-card-border:rgba(255,255,255,.78);
+    --glz-card-inset:rgba(255,255,255,.58);
+    --glz-chip-bg:rgba(255,255,255,.48);
+    --glz-chip-border:rgba(255,255,255,.72);
+    --glz-input-bg:rgba(255,255,255,.58);
+    --glz-popup-bg:rgba(250,252,253,.82);
+    --glz-popup-border:rgba(255,255,255,.82);
+    --glz-modal-bg:rgba(255,255,255,.78);
+    --glz-modal-border:rgba(255,255,255,.86);
+  }
+  html[data-theme="light"] body{
+    background:
+      radial-gradient(circle at 12% 10%,rgba(118,205,224,.38),transparent 31%),
+      radial-gradient(circle at 86% 14%,rgba(222,176,224,.34),transparent 29%),
+      radial-gradient(circle at 32% 92%,rgba(153,222,190,.28),transparent 30%),
+      radial-gradient(circle at 88% 88%,rgba(255,175,203,.25),transparent 31%),
+      linear-gradient(135deg,var(--glz-body-a) 0%,var(--glz-body-b) 48%,var(--glz-body-c) 100%);
+    background-attachment:fixed;
+  }
+  html[data-theme="light"] #topbar,
+  html[data-theme="light"] .card,
+  html[data-theme="light"] .chip,
+  html[data-theme="light"] .toast,
+  html[data-theme="light"] #theme-panel,
+  html[data-theme="light"] #modal{
+    -webkit-backdrop-filter:blur(16px) saturate(135%);
+    backdrop-filter:blur(16px) saturate(135%);
+  }
+  html[data-theme="light"] #topbar{
+    background:var(--glz-topbar-bg);
+    border-bottom-color:var(--glz-topbar-border);
+    box-shadow:0 5px 20px rgba(56,72,82,.08)
+  }
+  html[data-theme="light"] #dot.busy{
+    background:#d29a1f;
+    box-shadow:0 0 8px #d29a1f80;
+  }
+  html[data-theme="light"] .card{
+    border-color:var(--glz-card-border);
+    box-shadow:0 8px 24px rgba(56,72,82,.085),inset 0 1px 0 var(--glz-card-inset)
+  }
+  html[data-theme="light"] .card h3::before{
+    content:"";width:13px;height:4px;flex:none;border-radius:999px;
+    background:linear-gradient(90deg,#ff6da1,#e45c8d);box-shadow:0 1px 3px rgba(17,19,24,.08)
+  }
+  html[data-theme="light"] .card:nth-of-type(2) h3::before{background:linear-gradient(90deg,#3dd9ff,#58b8e8)}
+  html[data-theme="light"] .card:nth-of-type(3) h3::before{background:linear-gradient(90deg,#5ed6a5,#8ad08f)}
+  html[data-theme="light"] .card:nth-of-type(4) h3::before{background:linear-gradient(90deg,#ffae57,#ff7f93)}
+  html[data-theme="light"] .chip{background:var(--glz-chip-bg);border-color:var(--glz-chip-border)}
+  html[data-theme="light"] input,
+  html[data-theme="light"] select,
+  html[data-theme="light"] textarea{
+    background:var(--glz-input-bg);border-color:rgba(112,125,134,.26)
+  }
+  html[data-theme="light"] #theme-panel{
+    background:var(--glz-popup-bg);border-color:var(--glz-popup-border);box-shadow:0 16px 42px rgba(56,72,82,.14)
+  }
+  html[data-theme="light"] #modalwrap{background:rgba(40,48,54,.28)}
+  html[data-theme="light"] #modal{background:var(--glz-modal-bg);border-color:var(--glz-modal-border);box-shadow:0 20px 60px rgba(56,72,82,.22)}
+  html[data-theme="light"] .cl-t{color:#8a949a}
   </style>
 </head>
 <body>
-  <header>
-    <div class="logo-group">
-      <div class="logo-icon">&#128256;</div>
-      <div class="logo-text">Donut <span>Remix</span> | SVS</div>
-    </div>
-    <div class="header-badges">
-      <div id="badge-conn" class="badge"><span class="dot"></span> Connecting...</div>
-      <div id="badge-fw" class="badge">Firmware: --</div>
-      <div id="badge-inputs" class="badge">Inputs: --</div>
-      <div class="theme-menu-container">
-        <button id="theme-btn" class="btn" style="padding: 4px 12px; font-size: 0.8rem; display: flex; align-items: center; gap: 6px;" onclick="toggleThemeMenu(event)">
-          <span>Theme</span> <span style="font-size: 0.65rem;">▼</span>
-        </button>
-        <div id="theme-dropdown" class="theme-dropdown" style="display: none;">
-          <div class="theme-item" id="choice-dark" onclick="selectTheme('dark')">
-            <span class="swatch swatch-dark"></span>
-            <span>Dark</span>
-            <span class="theme-check" id="check-dark">&#10003;</span>
-          </div>
-          <div class="theme-item" id="choice-glazed" onclick="selectTheme('glazed')">
-            <span class="swatch swatch-glazed"></span>
-            <span>Glazed</span>
-            <span class="theme-check" id="check-glazed">&#10003;</span>
-          </div>
-          <div class="theme-item" id="choice-light" onclick="selectTheme('light')">
-            <span class="swatch swatch-light"></span>
-            <span>Light</span>
-            <span class="theme-check" id="check-light">&#10003;</span>
+  <div id="app">
+    <header id="topbar">
+      <div id="logo"><b>Donut<i>·</i>Remix</b><span>SVS</span></div>
+      <span id="dot" class="fast-tip" tabindex="0" data-tip="Gray = disconnected&#10;Green = connected / idle&#10;Orange = command busy" aria-label="Status indicator"></span>
+      <span class="chip" id="chip-fw">fw <b>v1.20</b></span>
+      <span class="chip" id="chip-inputs">inputs <b>6</b></span>
+      <span class="chip fast-tip" id="chip-peer" data-tip="Open linked RT4K WebCtl" aria-label="Linked RT4K Node"><a href="http://192.168.1.80/" target="_blank" style="color:inherit;text-decoration:none;">peer <b>RT4K</b></a></span>
+      <div id="themecontrol">
+        <button class="btn sm" id="themebtn" type="button" title="Theme" aria-haspopup="true" aria-expanded="false">Theme</button>
+        <div id="theme-panel" hidden>
+          <div class="theme-choice-row">
+            <button class="btn sm theme-choice" id="theme-dark" type="button">Dark</button>
+            <button class="btn sm theme-choice" id="theme-glazed" type="button">Glazed</button>
           </div>
         </div>
       </div>
-    </div>
-  </header>
+    </header>
 
-  <main>
-    <div class="hero-card">
-      <div class="hero-info">
-        <div class="hero-label">Active Video Input</div>
-        <div class="hero-value">
-          <span id="hero-input-num">Input --</span>
-          <span id="hero-input-name" style="font-size: 1.2rem; font-weight: 500; color: var(--text-muted);">(--)</span>
+    <div id="content">
+      <!-- ===== HERO ACTIVE ROUTE ===== -->
+      <div class="card hero-card">
+        <div class="hero-top">
+          <div>
+            <h3>Active Video Routing <span class="spacer"></span> <span class="pill cyan" id="hero-pill">STANDBY</span></h3>
+            <div class="hero-val">
+              <span id="hero-input-num" class="mono">Input --</span>
+              <span id="hero-input-name">(--)</span>
+            </div>
+            <div class="hint" id="hero-sub">Polling switch hardware over USB CDC...</div>
+          </div>
+          <div class="hero-actions">
+            <button class="btn pri sm" onclick="seekInput('up')">Seek Next ▲</button>
+            <button class="btn sm" onclick="seekInput('down')">Seek Prev ▼</button>
+          </div>
         </div>
-        <div class="hero-sub" id="hero-sub">Polling switch hardware over USB Host...</div>
-        <div class="active-toggles" id="active-toggles">
-          <button class="pill-btn" id="tog-y" onclick="toggleActiveModule('rgb_to_comp')">
-            <span class="pill-dot"></span> RGB &rarr; Comp: <strong id="tog-y-val">--</strong>
+        <div class="sep"></div>
+        <div class="mod-toggles">
+          <button class="btn sm" id="tog-y" onclick="toggleActiveModule('rgb_to_comp')">
+            <span class="pill-dot"></span> RGB &rarr; Comp: <b id="tog-y-val" class="mono">--</b>
           </button>
-          <button class="pill-btn" id="tog-g" onclick="toggleActiveModule('comp_to_rgb')">
-            <span class="pill-dot"></span> Comp &rarr; RGB: <strong id="tog-g-val">--</strong>
+          <button class="btn sm" id="tog-g" onclick="toggleActiveModule('comp_to_rgb')">
+            <span class="pill-dot"></span> Comp &rarr; RGB: <b id="tog-g-val" class="mono">--</b>
           </button>
-          <button class="pill-btn" id="tog-r" onclick="toggleActiveModule('rgsb')">
-            <span class="pill-dot"></span> Sync: <strong id="tog-r-val">--</strong>
+          <button class="btn sm" id="tog-r" onclick="toggleActiveModule('rgsb')">
+            <span class="pill-dot"></span> Sync: <b id="tog-r-val" class="mono">--</b>
           </button>
-          <button class="pill-btn" id="tog-s" onclick="toggleActiveModule('sync_bypass')">
-            <span class="pill-dot"></span> Sync Bypass: <strong id="tog-s-val">--</strong>
+          <button class="btn sm" id="tog-s" onclick="toggleActiveModule('sync_bypass')">
+            <span class="pill-dot"></span> Sync Bypass: <b id="tog-s-val" class="mono">--</b>
           </button>
         </div>
       </div>
-      <div style="display: flex; gap: 8px;">
-        <button class="btn btn-primary" onclick="seekInput('up')">&#9650; Seek Next Active</button>
-        <button class="btn" onclick="seekInput('down')">&#9660; Seek Prev</button>
-      </div>
-    </div>
 
-    <div class="section-title">
-      <span>Switch Inputs (1 &ndash; 6)</span>
-      <span style="font-size: 0.8rem; font-weight: 400; color: var(--text-muted);">Click to switch &bull; &#9881; for output &amp; sync settings</span>
-    </div>
+      <!-- ===== INPUTS GRID ===== -->
+      <div class="card" style="margin-top:16px;">
+        <h3>Switch Channels (1 – 6) <span class="spacer"></span> <span class="hint">Click channel to route video &bull; ⚙ for output transcode &amp; sync settings</span></h3>
+        <div class="grid inputs-grid" id="inputs-container">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
 
-    <div class="inputs-grid" id="inputs-container">
-      <!-- Generated dynamically -->
-    </div>
+      <!-- ===== CONTROLS PANEL ===== -->
+      <div class="card" style="margin-top:16px;">
+        <h3>Switch Controls &amp; Settings <span class="spacer"></span></h3>
+        <div class="row">
+          <button class="btn sm" onclick="cycleInput('up')">Input Up (+1)</button>
+          <button class="btn sm" onclick="cycleInput('down')">Input Down (-1)</button>
+          <button id="btn-power" class="btn sm" onclick="togglePower()">Power: Standby</button>
+          <button id="btn-attract" class="btn sm" onclick="toggleAttract()">Attract Mode</button>
+          <button id="btn-manual" class="btn sm" onclick="toggleManual()">Manual Lock</button>
+          <button class="btn sm" onclick="fetchModules(true)">Refresh Modules</button>
+          <button class="btn sm danger" onclick="switchInput(0)" style="margin-left:auto;">Input 0 (Standby)</button>
+        </div>
+      </div>
 
-    <div class="controls-panel">
-      <div class="section-title" style="margin-bottom: 0;">Switch Controls &amp; Settings</div>
-      <div class="btn-row">
-        <button class="btn" onclick="cycleInput('up')">Input Up (+1)</button>
-        <button class="btn" onclick="cycleInput('down')">Input Down (-1)</button>
-        <button id="btn-power" class="btn" onclick="togglePower()">Power: Standby</button>
-        <button id="btn-attract" class="btn" onclick="toggleAttract()">Attract Mode</button>
-        <button id="btn-manual" class="btn" onclick="toggleManual()">Manual Lock</button>
-        <button class="btn" onclick="fetchModules(true)">&#8635; Refresh Modules</button>
-        <button class="btn" onclick="switchInput(0)" style="margin-left: auto;">Input 0 (Standby)</button>
+      <!-- ===== CONSOLE ===== -->
+      <div class="card" style="margin-top:16px;">
+        <h3>SVS Serial Console
+          <span class="spacer"></span>
+          <span class="pill" id="term-status">CH340 9600 8N1</span>
+          <label for="term-autoscroll" class="hint" style="display:flex;align-items:center;gap:4px;cursor:pointer;margin:0 8px 0 0;">
+            <input type="checkbox" id="term-autoscroll" checked> autoscroll
+          </label>
+          <button class="btn sm ghost" onclick="clearTerminal()">clear</button>
+        </h3>
+        <div id="conlog"></div>
+        <form id="conform" onsubmit="sendTerminalCommand(event)">
+          <input id="coninput" placeholder="command… (e.g. SVS_Change_Input_1, Seek, R550, Y1) (↑ history)" autocomplete="off" spellcheck="false" aria-label="Console command" />
+          <button class="btn pri sm" type="submit">Send</button>
+        </form>
+        <div class="qchips">
+          <button type="button" class="qchip" onclick="quickCmd('SVS_Change_Input_1')">Input 1</button>
+          <button type="button" class="qchip" onclick="quickCmd('SVS_Change_Input_2')">Input 2</button>
+          <button type="button" class="qchip" onclick="quickCmd('SVS_Change_Input_3')">Input 3</button>
+          <button type="button" class="qchip" onclick="quickCmd('SVS_Change_Input_4')">Input 4</button>
+          <button type="button" class="qchip" onclick="quickCmd('SVS_Change_Input_5')">Input 5</button>
+          <button type="button" class="qchip" onclick="quickCmd('SVS_Change_Input_6')">Input 6</button>
+          <button type="button" class="qchip" onclick="quickCmd('SVS_Input_Seek_Up')">Seek ▲</button>
+          <button type="button" class="qchip" onclick="quickCmd('SVS_Input_Seek_Down')">Seek ▼</button>
+          <button type="button" class="qchip" onclick="quickCmd('SVS_Attract_ON')">Attract ON</button>
+          <button type="button" class="qchip" onclick="quickCmd('SVS_Attract_OFF')">Attract OFF</button>
+          <button type="button" class="qchip" onclick="quickCmd('R550')">Read 550 (RGsB)</button>
+          <button type="button" class="qchip" onclick="quickCmd('R590')">Read 590 (Sync)</button>
+          <button type="button" class="qchip" onclick="quickCmd('Y1')">Y1 (RGB-Comp 1)</button>
+          <button type="button" class="qchip" onclick="quickCmd('G1')">G1 (Comp-RGB 1)</button>
+        </div>
       </div>
-    </div>
 
-    <div class="terminal-card">
-      <div class="terminal-header">
-        <div class="terminal-title">
-          <span>Serial Terminal</span>
-          <span style="font-size: 0.75rem; font-weight: 500; color: var(--text-muted);" id="term-status">(CH340 &bull; 9600 baud)</span>
-        </div>
-        <div class="terminal-controls">
-          <label><input type="checkbox" id="term-autoscroll" checked> Auto-scroll</label>
-          <label><input type="checkbox" id="term-timestamps" checked> Timestamps</label>
-          <button class="btn" style="padding: 3px 8px; font-size: 0.75rem;" onclick="clearTerminal()">Clear</button>
-        </div>
-      </div>
-      <div class="terminal-log" id="terminal-log"></div>
-      <form class="terminal-form" onsubmit="sendTerminalCommand(event)">
-        <input type="text" id="terminal-input" class="terminal-input" placeholder="Enter command... (e.g. SVS_Change_Input_1, Seek, R550) (&uarr;&darr; history)" autocomplete="off" spellcheck="false" />
-        <button type="submit" class="btn btn-primary" style="padding: 8px 16px;">Send</button>
-      </form>
-      <div class="terminal-chips">
-        <button type="button" class="tchip" onclick="quickCmd('SVS_Change_Input_1')">Input 1</button>
-        <button type="button" class="tchip" onclick="quickCmd('SVS_Change_Input_2')">Input 2</button>
-        <button type="button" class="tchip" onclick="quickCmd('SVS_Change_Input_3')">Input 3</button>
-        <button type="button" class="tchip" onclick="quickCmd('SVS_Change_Input_4')">Input 4</button>
-        <button type="button" class="tchip" onclick="quickCmd('SVS_Change_Input_5')">Input 5</button>
-        <button type="button" class="tchip" onclick="quickCmd('SVS_Change_Input_6')">Input 6</button>
-        <button type="button" class="tchip" onclick="quickCmd('SVS_Input_Seek_Up')">Seek &blacktriangle;</button>
-        <button type="button" class="tchip" onclick="quickCmd('SVS_Input_Seek_Down')">Seek &blacktriangledown;</button>
-        <button type="button" class="tchip" onclick="quickCmd('SVS_Attract_ON')">Attract ON</button>
-        <button type="button" class="tchip" onclick="quickCmd('SVS_Attract_OFF')">Attract OFF</button>
-        <button type="button" class="tchip" onclick="quickCmd('R550')">Read 550 (RGsB)</button>
-        <button type="button" class="tchip" onclick="quickCmd('R590')">Read 590 (Sync)</button>
-        <button type="button" class="tchip" onclick="quickCmd('Y1')">Y1 (RGB-Comp 1)</button>
-        <button type="button" class="tchip" onclick="quickCmd('G1')">G1 (Comp-RGB 1)</button>
-      </div>
-    </div>
-  </main>
-
-  <div id="cfg-modal" class="modal-overlay" style="display:none;" onclick="closeModal(event)">
-    <div class="modal-card" onclick="event.stopPropagation()">
-      <div class="modal-header">
-        <h3 id="modal-title">Input Configuration</h3>
-        <button class="modal-close" onclick="closeModal()">&times;</button>
-      </div>
-      <div class="modal-body">
-        <div class="form-group">
-          <label style="font-size:0.85rem; font-weight:600; color:var(--text-muted);">Channel Friendly Name:</label>
-          <input type="text" id="modal-name-input" class="modal-input" placeholder="e.g. SNES" />
-        </div>
-        <div class="toggle-row">
-          <div>
-            <strong>RGB to YPbPr (Component)</strong>
-            <div class="toggle-desc">Transcode RGB signal to Component output</div>
-          </div>
-          <input type="checkbox" id="modal-tog-y" class="switch" />
-        </div>
-        <div class="toggle-row">
-          <div>
-            <strong>YPbPr (Component) to RGB</strong>
-            <div class="toggle-desc">Transcode Component signal to RGB output</div>
-          </div>
-          <input type="checkbox" id="modal-tog-g" class="switch" />
-        </div>
-        <div class="toggle-row">
-          <div>
-            <strong>RGBS to RGsB (Sync-on-Green)</strong>
-            <div class="toggle-desc">Route sync onto green channel (for PVMs / SoG)</div>
-          </div>
-          <input type="checkbox" id="modal-tog-r" class="switch" />
-        </div>
-        <div class="toggle-row">
-          <div>
-            <strong>Sync Bypass (Raw CSync)</strong>
-            <div class="toggle-desc">Bypass sync cleaner for raw arcade / TTL sync</div>
-          </div>
-          <input type="checkbox" id="modal-tog-s" class="switch" />
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn" onclick="closeModal()">Cancel</button>
-        <button class="btn btn-primary" onclick="saveModalConfig()">Save Settings</button>
+      <div style="margin-top:24px;text-align:center;color:var(--faint);font-size:11.5px;padding-bottom:16px;">
+        Donut Remix &bull; Scalable Video Switch Node &bull; <a href="http://192.168.1.80/" target="_blank" style="color:var(--dim);text-decoration:none;border-bottom:1px dotted var(--faint);">Open RT4K WebCtl</a>
       </div>
     </div>
   </div>
 
-  <div id="toast" class="toast"></div>
+  <div id="toasts"></div>
 
-  <footer>
-    Donut Remix &bull; Scalable Video Switch Node &bull; <a href="/" id="rt4k-link">Open RT4K WebCtl</a>
-  </footer>
+  <div id="modalwrap">
+    <div id="modal">
+      <h4 id="modal-title">Channel Configuration</h4>
+      <p id="modal-sub">Adjust transcode and sync routing for this video input.</p>
+      <div style="margin:12px 0;">
+        <label class="hint" style="display:block;margin-bottom:4px;">Channel Friendly Name:</label>
+        <input type="text" id="modal-name-input" style="width:100%;" placeholder="e.g. SNES" />
+      </div>
+      <div class="sep"></div>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <label style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;">
+          <span><b>RGB to YPbPr (Component)</b><div class="hint">Transcode RGB signal to Component output</div></span>
+          <input type="checkbox" id="modal-tog-y" />
+        </label>
+        <label style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;">
+          <span><b>YPbPr to RGB</b><div class="hint">Transcode Component signal to RGB output</div></span>
+          <input type="checkbox" id="modal-tog-g" />
+        </label>
+        <label style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;">
+          <span><b>RGBS to RGsB (Sync-on-Green)</b><div class="hint">Route sync onto green channel (for PVMs / SoG)</div></span>
+          <input type="checkbox" id="modal-tog-r" />
+        </label>
+        <label style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;">
+          <span><b>Sync Bypass (Raw CSync)</b><div class="hint">Bypass sync cleaner for raw arcade / TTL sync</div></span>
+          <input type="checkbox" id="modal-tog-s" />
+        </label>
+      </div>
+      <div id="modalbtns">
+        <button class="btn sm" onclick="closeModal()">Cancel</button>
+        <button class="btn pri sm" onclick="saveModalConfig()">Save Settings</button>
+      </div>
+    </div>
+  </div>
 
   <script>
+    const $ = id => document.getElementById(id);
+
+    /* ---- WebCtl theme ---- */
+    const WEBCTL_THEME_LEGACY_KEY = 'donutshop.webctl.theme';
+    const WEBCTL_THEME_CACHE_KEY = 'donutshop.webctl.theme.' + location.host;
+    const readWebCtlThemeCache = () => {
+      try {
+        const cached = localStorage.getItem(WEBCTL_THEME_CACHE_KEY) ||
+                       localStorage.getItem(WEBCTL_THEME_LEGACY_KEY) || 'dark';
+        return cached.startsWith('light') ? 'light' : 'dark';
+      } catch { return 'dark'; }
+    };
+    const writeWebCtlThemeCache = theme => {
+      try {
+        localStorage.setItem(WEBCTL_THEME_CACHE_KEY, theme === 'light' ? 'light' : 'dark');
+        localStorage.removeItem(WEBCTL_THEME_LEGACY_KEY);
+      } catch {}
+    };
+
+    let webctlTheme = readWebCtlThemeCache();
+    let webctlConfirmedTheme = webctlTheme;
+
+    function updateThemeControls(){
+      const dark = $('theme-dark');
+      const glazed = $('theme-glazed');
+      if(dark) dark.classList.toggle('on', webctlTheme === 'dark');
+      if(glazed) glazed.classList.toggle('on', webctlTheme === 'light');
+    }
+
+    function applyWebCtlAppearance(theme){
+      webctlTheme = theme === 'light' ? 'light' : 'dark';
+      document.documentElement.dataset.theme = webctlTheme;
+      updateThemeControls();
+    }
+
+    async function syncWebCtlThemeFromNano(){
+      try {
+        const response = await fetch('/webctl-theme', {cache:'no-store'});
+        if(!response.ok) return;
+        const state = await response.json();
+        const theme = state.theme === 'light' ? 'light' : 'dark';
+        applyWebCtlAppearance(theme);
+        writeWebCtlThemeCache(theme);
+      } catch (e) {}
+    }
+
+    async function saveWebCtlAppearance(theme, previous){
+      try {
+        const response = await fetch('/webctl-theme', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+          body: 'theme=' + encodeURIComponent(theme)
+        });
+        if(response.ok){
+          const state = await response.json();
+          const confirmed = state.theme === 'light' ? 'light' : 'dark';
+          applyWebCtlAppearance(confirmed);
+          writeWebCtlThemeCache(confirmed);
+        }
+      } catch(e) {
+        console.warn('Theme save failed', e);
+      }
+    }
+
+    applyWebCtlAppearance(webctlTheme);
+    syncWebCtlThemeFromNano();
+
+    const themeButton = $('themebtn');
+    const themePanel = $('theme-panel');
+
+    themeButton?.addEventListener('click', event => {
+      event.stopPropagation();
+      if(!themePanel) return;
+      themePanel.hidden = !themePanel.hidden;
+      themeButton.setAttribute('aria-expanded', themePanel.hidden ? 'false' : 'true');
+    });
+    themePanel?.addEventListener('click', event => event.stopPropagation());
+    document.addEventListener('click', () => {
+      if(themePanel) themePanel.hidden = true;
+      if(themeButton) themeButton.setAttribute('aria-expanded','false');
+    });
+
+    $('theme-dark')?.addEventListener('click', () => {
+      if(webctlTheme === 'dark') return;
+      const previous = webctlConfirmedTheme;
+      applyWebCtlAppearance('dark');
+      writeWebCtlThemeCache('dark');
+      saveWebCtlAppearance('dark', previous);
+      if(themePanel) themePanel.hidden = true;
+    });
+    $('theme-glazed')?.addEventListener('click', () => {
+      if(webctlTheme === 'light') return;
+      const previous = webctlConfirmedTheme;
+      applyWebCtlAppearance('light');
+      writeWebCtlThemeCache('light');
+      saveWebCtlAppearance('light', previous);
+      if(themePanel) themePanel.hidden = true;
+    });
+
+    /* ---- SVS State & Control ---- */
     let sessionToken = localStorage.getItem('donut_token') || '';
     let currentInput = 0;
     let totalInputs = 6;
@@ -696,7 +546,6 @@ const char SVS_UI_HTML[] = R"rawliteral(<!DOCTYPE html>
     let isAttract = false;
     let isManual = false;
 
-    // Load custom names from localStorage
     function getInputName(idx) {
       if (idx === 0) return 'Standby / None';
       const saved = localStorage.getItem('svs_input_name_' + idx);
@@ -720,11 +569,14 @@ const char SVS_UI_HTML[] = R"rawliteral(<!DOCTYPE html>
       }
     }
 
-    function showToast(msg) {
-      const t = document.getElementById('toast');
+    function toast(msg, type = 'ok') {
+      const c = $('toasts');
+      if(!c) return;
+      const t = document.createElement('div');
+      t.className = 'toast ' + type;
       t.innerText = msg;
-      t.style.display = 'block';
-      setTimeout(() => { t.style.display = 'none'; }, 2500);
+      c.appendChild(t);
+      setTimeout(() => t.remove(), 2500);
     }
 
     async function ensureAuth() {
@@ -766,6 +618,7 @@ const char SVS_UI_HTML[] = R"rawliteral(<!DOCTYPE html>
       currentInput = num;
       renderInputs();
       updateHero();
+      $('dot').className = 'busy';
       try {
         const res = await authedFetch('/api/v1/svs/input', {
           method: 'POST',
@@ -773,22 +626,23 @@ const char SVS_UI_HTML[] = R"rawliteral(<!DOCTYPE html>
           body: JSON.stringify({ input: num })
         });
         if (res.ok) {
-          showToast('Switched to ' + getInputName(num));
+          toast('Switched to ' + getInputName(num));
         } else {
           currentInput = prevInput;
           renderInputs();
           updateHero();
-          showToast('Error switching input (' + res.status + ')');
+          toast('Error switching input (' + res.status + ')', 'err');
         }
       } catch (e) {
         currentInput = prevInput;
         renderInputs();
         updateHero();
-        showToast('Failed to switch input: ' + e);
+        toast('Failed to switch input', 'err');
       }
     }
 
     async function seekInput(dir) {
+      $('dot').className = 'busy';
       try {
         const res = await authedFetch('/api/v1/svs/seek', {
           method: 'POST',
@@ -796,13 +650,13 @@ const char SVS_UI_HTML[] = R"rawliteral(<!DOCTYPE html>
           body: JSON.stringify({ dir: dir })
         });
         if (res.ok) {
-          showToast('Seeking active signal ' + dir + '...');
+          toast('Seeking active signal ' + dir + '…');
           pollStatus();
         } else {
-          showToast('Seek failed (' + res.status + ')');
+          toast('Seek failed (' + res.status + ')', 'err');
         }
       } catch (e) {
-        showToast('Seek error: ' + e);
+        toast('Seek error', 'err');
       }
     }
 
@@ -822,16 +676,16 @@ const char SVS_UI_HTML[] = R"rawliteral(<!DOCTYPE html>
           body: JSON.stringify({ power: next })
         });
         if (res.ok) {
-          showToast(next ? 'Power ON' : 'Standby Mode');
+          toast(next ? 'Power ON' : 'Standby Mode');
         } else {
           isPower = !next;
           updateButtons();
-          showToast('Power toggle failed (' + res.status + ')');
+          toast('Power toggle failed', 'err');
         }
       } catch (e) {
         isPower = !next;
         updateButtons();
-        showToast('Power toggle error: ' + e);
+        toast('Power toggle error', 'err');
       }
     }
 
@@ -846,16 +700,16 @@ const char SVS_UI_HTML[] = R"rawliteral(<!DOCTYPE html>
           body: JSON.stringify({ cmd: next ? 'SVS_Attract_ON' : 'SVS_Attract_OFF' })
         });
         if (res.ok) {
-          showToast('Attract mode ' + (next ? 'ON' : 'OFF'));
+          toast('Attract mode ' + (next ? 'ON' : 'OFF'));
         } else {
           isAttract = !next;
           updateButtons();
-          showToast('Attract toggle failed (' + res.status + ')');
+          toast('Attract toggle failed', 'err');
         }
       } catch (e) {
         isAttract = !next;
         updateButtons();
-        showToast('Attract error: ' + e);
+        toast('Attract error', 'err');
       }
     }
 
@@ -870,25 +724,20 @@ const char SVS_UI_HTML[] = R"rawliteral(<!DOCTYPE html>
           body: JSON.stringify({ cmd: next ? 'SVS_Manual_ON' : 'SVS_Manual_OFF' })
         });
         if (res.ok) {
-          showToast('Manual mode ' + (next ? 'ON' : 'OFF'));
+          toast('Manual mode ' + (next ? 'ON' : 'OFF'));
         } else {
           isManual = !next;
           updateButtons();
-          showToast('Manual toggle failed (' + res.status + ')');
+          toast('Manual toggle failed', 'err');
         }
       } catch (e) {
         isManual = !next;
         updateButtons();
-        showToast('Manual error: ' + e);
+        toast('Manual error', 'err');
       }
     }
 
-    let moduleData = {
-      rgbToComp: [],
-      compToRgb: [],
-      rgsb: [],
-      syncBypass: []
-    };
+    let moduleData = { rgbToComp: [], compToRgb: [], rgsb: [], syncBypass: [] };
     let modalInputIdx = 1;
 
     async function fetchModules(force = false) {
@@ -903,16 +752,14 @@ const char SVS_UI_HTML[] = R"rawliteral(<!DOCTYPE html>
           moduleData.syncBypass = d.sync_bypass || [];
           renderInputs();
           updateHero();
-          if (force) showToast('Refreshed module settings from hardware');
+          if (force) toast('Refreshed module settings from hardware');
         }
-      } catch (e) {
-        console.error('Error fetching SVS modules:', e);
-      }
+      } catch (e) {}
     }
 
     async function toggleActiveModule(type) {
       if (currentInput <= 0) {
-        showToast('Select an active input first');
+        toast('Select an active input first', 'warn');
         return;
       }
       try {
@@ -929,54 +776,46 @@ const char SVS_UI_HTML[] = R"rawliteral(<!DOCTYPE html>
           moduleData.syncBypass = d.sync_bypass || [];
           renderInputs();
           updateHero();
-          showToast('Updated ' + type + ' on Input #' + currentInput);
+          toast('Updated ' + type + ' on Input #' + currentInput);
         } else {
-          showToast('Failed to toggle ' + type);
+          toast('Failed to toggle ' + type, 'err');
         }
       } catch (e) {
-        showToast('Error toggling module: ' + e);
+        toast('Error toggling module', 'err');
       }
     }
 
     function openConfigModal(e, idx) {
       if (e) e.stopPropagation();
       modalInputIdx = idx;
-      const title = document.getElementById('modal-title');
-      title.innerText = 'Input #' + idx + ' Settings (' + getInputName(idx) + ')';
-      
-      document.getElementById('modal-name-input').value = getInputName(idx);
-      document.getElementById('modal-tog-y').checked = !!moduleData.rgbToComp[idx - 1];
-      document.getElementById('modal-tog-g').checked = !!moduleData.compToRgb[idx - 1];
-      document.getElementById('modal-tog-r').checked = !!moduleData.rgsb[idx - 1];
-      document.getElementById('modal-tog-s').checked = !!moduleData.syncBypass[idx - 1];
-
-      document.getElementById('cfg-modal').style.display = 'flex';
+      $('modal-title').innerText = 'Input #' + idx + ' Settings (' + getInputName(idx) + ')';
+      $('modal-name-input').value = getInputName(idx);
+      $('modal-tog-y').checked = !!moduleData.rgbToComp[idx - 1];
+      $('modal-tog-g').checked = !!moduleData.compToRgb[idx - 1];
+      $('modal-tog-r').checked = !!moduleData.rgsb[idx - 1];
+      $('modal-tog-s').checked = !!moduleData.syncBypass[idx - 1];
+      $('modalwrap').className = 'on';
     }
 
     function closeModal(e) {
-      if (e && e.target !== document.getElementById('cfg-modal') && e.type === 'click' && !e.target.classList.contains('modal-close') && e.target.tagName !== 'BUTTON') return;
-      document.getElementById('cfg-modal').style.display = 'none';
+      if (e && e.target !== $('modalwrap') && e.type === 'click' && !e.target.classList.contains('btn')) return;
+      $('modalwrap').className = '';
     }
 
     async function saveModalConfig() {
       const idx = modalInputIdx;
-      const newName = document.getElementById('modal-name-input').value.trim();
-      if (newName) {
-        localStorage.setItem('svs_input_name_' + idx, newName);
-      }
+      const newName = $('modal-name-input').value.trim();
+      if (newName) setInputName(idx, newName);
 
-      const newY = document.getElementById('modal-tog-y').checked;
-      const newG = document.getElementById('modal-tog-g').checked;
-      const newR = document.getElementById('modal-tog-r').checked;
-      const newS = document.getElementById('modal-tog-s').checked;
+      const updates = [
+        { type: 'rgb_to_comp', enable: $('modal-tog-y').checked },
+        { type: 'comp_to_rgb', enable: $('modal-tog-g').checked },
+        { type: 'rgsb', enable: $('modal-tog-r').checked },
+        { type: 'sync_bypass', enable: $('modal-tog-s').checked }
+      ];
 
-      const updates = [];
-      if (newY !== !!moduleData.rgbToComp[idx - 1]) updates.push({ type: 'rgb_to_comp', enable: newY });
-      if (newG !== !!moduleData.compToRgb[idx - 1]) updates.push({ type: 'comp_to_rgb', enable: newG });
-      if (newR !== !!moduleData.rgsb[idx - 1]) updates.push({ type: 'rgsb', enable: newR });
-      if (newS !== !!moduleData.syncBypass[idx - 1]) updates.push({ type: 'sync_bypass', enable: newS });
-
-      document.getElementById('cfg-modal').style.display = 'none';
+      closeModal();
+      toast('Saving channel settings…');
 
       for (const u of updates) {
         try {
@@ -991,143 +830,144 @@ const char SVS_UI_HTML[] = R"rawliteral(<!DOCTYPE html>
       await fetchModules(false);
       renderInputs();
       updateHero();
-      showToast('Settings saved for Input #' + idx);
+      toast('Settings saved for Input #' + idx);
     }
 
     function renderInputs() {
-      const c = document.getElementById('inputs-container');
+      const c = $('inputs-container');
+      if (!c) return;
       c.innerHTML = '';
       for (let i = 1; i <= totalInputs; i++) {
         const card = document.createElement('div');
         card.className = 'input-card' + (currentInput === i ? ' active' : '');
         card.onclick = () => switchInput(i);
 
-        const top = document.createElement('div');
-        top.className = 'card-top';
+        const head = document.createElement('div');
+        head.className = 'input-card-head';
 
         const num = document.createElement('div');
-        num.className = 'input-num';
+        num.className = 'input-card-num';
         num.innerText = '#' + i;
 
-        const pill = document.createElement('div');
-        pill.className = 'input-status-pill';
-        pill.innerText = (currentInput === i ? 'Active' : 'Input');
+        const pill = document.createElement('span');
+        pill.className = 'pill' + (currentInput === i ? ' live' : '');
+        pill.innerText = (currentInput === i ? 'ACTIVE' : 'READY');
 
-        top.appendChild(num);
-        top.appendChild(pill);
+        head.appendChild(num);
+        head.appendChild(pill);
 
-        const nameRow = document.createElement('div');
-        nameRow.className = 'input-name';
-        
-        const labelText = document.createElement('span');
-        labelText.innerText = getInputName(i);
+        const titleRow = document.createElement('div');
+        titleRow.className = 'input-card-title';
 
-        const actions = document.createElement('div');
-        actions.className = 'card-actions';
+        const nameSpan = document.createElement('span');
+        nameSpan.innerText = getInputName(i);
+
+        const actionGroup = document.createElement('div');
+        actionGroup.style.display = 'flex';
+        actionGroup.style.gap = '4px';
 
         const cfgBtn = document.createElement('button');
-        cfgBtn.className = 'card-btn';
+        cfgBtn.className = 'btn sm ghost';
+        cfgBtn.style.padding = '2px 6px';
         cfgBtn.title = 'Configure Output & Sync Settings';
-        cfgBtn.innerHTML = '&#9881;';
+        cfgBtn.innerText = '⚙';
         cfgBtn.onclick = (e) => openConfigModal(e, i);
 
         const editBtn = document.createElement('button');
-        editBtn.className = 'card-btn';
+        editBtn.className = 'btn sm ghost';
+        editBtn.style.padding = '2px 6px';
         editBtn.title = 'Edit Name';
-        editBtn.innerHTML = '&#9998;';
+        editBtn.innerText = '✎';
         editBtn.onclick = (e) => editName(e, i);
 
-        actions.appendChild(cfgBtn);
-        actions.appendChild(editBtn);
+        actionGroup.appendChild(cfgBtn);
+        actionGroup.appendChild(editBtn);
 
-        nameRow.appendChild(labelText);
-        nameRow.appendChild(actions);
+        titleRow.appendChild(nameSpan);
+        titleRow.appendChild(actionGroup);
 
-        // Feature badges for this channel
         const badges = document.createElement('div');
-        badges.className = 'card-badges';
+        badges.className = 'input-card-badges';
         if (moduleData.rgbToComp && moduleData.rgbToComp[i - 1]) {
-          badges.innerHTML += '<span class="mod-pill active-y">RGB&rarr;Comp</span>';
+          badges.innerHTML += '<span class="mod-badge y">RGB→Comp</span>';
         }
         if (moduleData.compToRgb && moduleData.compToRgb[i - 1]) {
-          badges.innerHTML += '<span class="mod-pill active-g">Comp&rarr;RGB</span>';
+          badges.innerHTML += '<span class="mod-badge g">Comp→RGB</span>';
         }
         if (moduleData.rgsb && moduleData.rgsb[i - 1]) {
-          badges.innerHTML += '<span class="mod-pill active-r">RGsB</span>';
+          badges.innerHTML += '<span class="mod-badge r">RGsB</span>';
         }
         if (moduleData.syncBypass && moduleData.syncBypass[i - 1]) {
-          badges.innerHTML += '<span class="mod-pill active-s">Raw Sync</span>';
+          badges.innerHTML += '<span class="mod-badge s">Raw Sync</span>';
         }
 
-        card.appendChild(top);
-        card.appendChild(nameRow);
-        if (badges.innerHTML !== '') {
-          card.appendChild(badges);
-        }
+        card.appendChild(head);
+        card.appendChild(titleRow);
+        if (badges.innerHTML !== '') card.appendChild(badges);
         c.appendChild(card);
       }
     }
 
     function updateHero() {
-      const numElem = document.getElementById('hero-input-num');
-      const nameElem = document.getElementById('hero-input-name');
-      const subElem = document.getElementById('hero-sub');
+      const numElem = $('hero-input-num');
+      const nameElem = $('hero-input-name');
+      const subElem = $('hero-sub');
+      const pillElem = $('hero-pill');
 
       if (currentInput === 0) {
         numElem.innerText = 'Standby';
         nameElem.innerText = '(No Input)';
-        subElem.innerText = 'Switch in standby mode. Click an input card below to route video.';
-        document.getElementById('tog-y-val').innerText = '--';
-        document.getElementById('tog-g-val').innerText = '--';
-        document.getElementById('tog-r-val').innerText = '--';
-        document.getElementById('tog-s-val').innerText = '--';
-        document.getElementById('tog-y').className = 'pill-btn';
-        document.getElementById('tog-g').className = 'pill-btn';
-        document.getElementById('tog-r').className = 'pill-btn';
-        document.getElementById('tog-s').className = 'pill-btn';
+        subElem.innerText = 'Switch in standby mode. Click a channel card to route video.';
+        if(pillElem){ pillElem.className = 'pill warn'; pillElem.innerText = 'STANDBY'; }
+
+        $('tog-y-val').innerText = '--';
+        $('tog-g-val').innerText = '--';
+        $('tog-r-val').innerText = '--';
+        $('tog-s-val').innerText = '--';
+        $('tog-y').className = 'btn sm';
+        $('tog-g').className = 'btn sm';
+        $('tog-r').className = 'btn sm';
+        $('tog-s').className = 'btn sm';
       } else {
         numElem.innerText = 'Input #' + currentInput;
         nameElem.innerText = getInputName(currentInput);
         subElem.innerText = 'Active routing to SVS Output &bull; CH340 USB CDC 9600 baud';
+        if(pillElem){ pillElem.className = 'pill live'; pillElem.innerText = 'LIVE ROUTE'; }
 
         const yOn = moduleData.rgbToComp && moduleData.rgbToComp[currentInput - 1];
         const gOn = moduleData.compToRgb && moduleData.compToRgb[currentInput - 1];
         const rOn = moduleData.rgsb && moduleData.rgsb[currentInput - 1];
         const sOn = moduleData.syncBypass && moduleData.syncBypass[currentInput - 1];
 
-        const togY = document.getElementById('tog-y');
-        togY.className = 'pill-btn' + (yOn ? ' active' : '');
-        document.getElementById('tog-y-val').innerText = yOn ? 'ON' : 'OFF';
+        $('tog-y').className = 'btn sm' + (yOn ? ' on' : '');
+        $('tog-y-val').innerText = yOn ? 'ON' : 'OFF';
 
-        const togG = document.getElementById('tog-g');
-        togG.className = 'pill-btn' + (gOn ? ' active' : '');
-        document.getElementById('tog-g-val').innerText = gOn ? 'ON' : 'OFF';
+        $('tog-g').className = 'btn sm' + (gOn ? ' on' : '');
+        $('tog-g-val').innerText = gOn ? 'ON' : 'OFF';
 
-        const togR = document.getElementById('tog-r');
-        togR.className = 'pill-btn' + (rOn ? ' active' : '');
-        document.getElementById('tog-r-val').innerText = rOn ? 'RGsB (SoG)' : 'CSync (Pass)';
+        $('tog-r').className = 'btn sm' + (rOn ? ' on' : '');
+        $('tog-r-val').innerText = rOn ? 'RGsB (SoG)' : 'CSync (Pass)';
 
-        const togS = document.getElementById('tog-s');
-        togS.className = 'pill-btn' + (sOn ? ' active' : '');
-        document.getElementById('tog-s-val').innerText = sOn ? 'Raw Bypass' : 'Cleaned';
+        $('tog-s').className = 'btn sm' + (sOn ? ' on' : '');
+        $('tog-s-val').innerText = sOn ? 'Raw Bypass' : 'Cleaned';
       }
     }
 
     function updateButtons() {
-      const pBtn = document.getElementById('btn-power');
+      const pBtn = $('btn-power');
       pBtn.innerText = isPower ? 'Power: ON' : 'Power: Standby';
-      pBtn.className = 'btn' + (isPower ? ' btn-active' : '');
+      pBtn.className = 'btn sm' + (isPower ? ' on' : '');
 
-      const aBtn = document.getElementById('btn-attract');
-      aBtn.className = 'btn' + (isAttract ? ' btn-active' : '');
+      const aBtn = $('btn-attract');
+      aBtn.className = 'btn sm' + (isAttract ? ' on' : '');
       aBtn.innerText = isAttract ? 'Attract: ON' : 'Attract: OFF';
 
-      const mBtn = document.getElementById('btn-manual');
-      mBtn.className = 'btn' + (isManual ? ' btn-active' : '');
+      const mBtn = $('btn-manual');
+      mBtn.className = 'btn sm' + (isManual ? ' on' : '');
       mBtn.innerText = isManual ? 'Manual: Locked' : 'Manual: Normal';
     }
 
-    // Terminal State & History
+    /* ---- Serial Console ---- */
     let cmdHistory = [];
     let historyIdx = -1;
     let seenLogKeys = new Set();
@@ -1142,9 +982,8 @@ const char SVS_UI_HTML[] = R"rawliteral(<!DOCTYPE html>
     }
 
     function appendTerminalLine(dir, text, timeStr) {
-      const log = document.getElementById('terminal-log');
+      const log = $('conlog');
       if (!log) return;
-      const showTime = document.getElementById('term-timestamps')?.checked ?? true;
       const line = document.createElement('div');
       
       let cls = 'cl-sys';
@@ -1154,24 +993,23 @@ const char SVS_UI_HTML[] = R"rawliteral(<!DOCTYPE html>
       else if (dir === 'E') { cls = 'cl-err'; prefix = '! [ERR] '; }
 
       const ts = timeStr || formatTime();
-      line.innerHTML = (showTime ? '<span class="cl-time">' + ts + '</span>' : '') +
-                       '<span class="' + cls + '"><strong>' + prefix + '</strong>' + escapeHtml(text) + '</span>';
+      line.innerHTML = '<span class="cl-t">' + ts + '</span><span class="' + cls + '"><strong>' + prefix + '</strong>' + escapeHtml(text) + '</span>';
       log.appendChild(line);
 
-      if (document.getElementById('term-autoscroll')?.checked ?? true) {
+      if ($('term-autoscroll')?.checked ?? true) {
         log.scrollTop = log.scrollHeight;
       }
     }
 
     function clearTerminal() {
-      const log = document.getElementById('terminal-log');
+      const log = $('conlog');
       if (log) log.innerHTML = '';
-      appendTerminalLine('S', 'Terminal buffer cleared.');
+      appendTerminalLine('S', 'Console buffer cleared.');
     }
 
     async function sendTerminalCommand(e) {
       if (e) e.preventDefault();
-      const input = document.getElementById('terminal-input');
+      const input = $('coninput');
       const cmd = input.value.trim();
       if (!cmd) return;
       
@@ -1203,14 +1041,14 @@ const char SVS_UI_HTML[] = R"rawliteral(<!DOCTYPE html>
     }
 
     function quickCmd(cmd) {
-      const input = document.getElementById('terminal-input');
+      const input = $('coninput');
       if (input) {
         input.value = cmd;
         sendTerminalCommand();
       }
     }
 
-    document.getElementById('terminal-input')?.addEventListener('keydown', (e) => {
+    $('coninput')?.addEventListener('keydown', (e) => {
       if (e.key === 'ArrowUp') {
         e.preventDefault();
         if (historyIdx + 1 < cmdHistory.length) {
@@ -1229,40 +1067,7 @@ const char SVS_UI_HTML[] = R"rawliteral(<!DOCTYPE html>
       }
     });
 
-    // Theme Picker Functions
-    function toggleThemeMenu(e) {
-      if (e) e.stopPropagation();
-      const d = document.getElementById('theme-dropdown');
-      if (d) {
-        d.style.display = (d.style.display === 'none' || !d.style.display) ? 'block' : 'none';
-      }
-    }
-
-    function selectTheme(theme) {
-      document.documentElement.setAttribute('data-theme', theme);
-      localStorage.setItem('svs_theme', theme);
-      updateThemeChecks(theme);
-      const d = document.getElementById('theme-dropdown');
-      if (d) d.style.display = 'none';
-      showToast('Theme set to ' + theme.charAt(0).toUpperCase() + theme.slice(1));
-    }
-
-    function updateThemeChecks(activeTheme) {
-      ['dark', 'glazed', 'light'].forEach(t => {
-        const chk = document.getElementById('check-' + t);
-        const item = document.getElementById('choice-' + t);
-        if (chk) chk.style.visibility = (t === activeTheme) ? 'visible' : 'hidden';
-        if (item) item.classList.toggle('selected', t === activeTheme);
-      });
-    }
-
-    document.addEventListener('click', (e) => {
-      const d = document.getElementById('theme-dropdown');
-      if (d && !e.target.closest('.theme-menu-container')) {
-        d.style.display = 'none';
-      }
-    });
-
+    /* ---- Polling & Hardware Telemetry ---- */
     async function pollStatus() {
       try {
         const res = await fetch('/api/v1/svs/status', { cache: 'no-store' });
@@ -1283,18 +1088,16 @@ const char SVS_UI_HTML[] = R"rawliteral(<!DOCTYPE html>
           isManual = data.manual;
           updateButtons();
 
-          // Badges
-          const bConn = document.getElementById('badge-conn');
-          bConn.className = 'badge connected';
-          bConn.innerHTML = '<span class="dot"></span> SVS Connected';
-
-          document.getElementById('badge-fw').innerText = 'Firmware: v' + (data.firmware || '1.20');
-          document.getElementById('badge-inputs').innerText = 'Total: ' + totalInputs + ' Inputs';
+          // Topbar Badges
+          const dot = $('dot');
+          if (dot) dot.className = data.connected ? 'ok' : '';
+          $('chip-fw').innerHTML = 'fw <b>v' + (data.firmware || '1.20') + '</b>';
+          $('chip-inputs').innerHTML = 'inputs <b>' + totalInputs + '</b>';
 
           // Terminal Status & Feed
-          const tStatus = document.getElementById('term-status');
+          const tStatus = $('term-status');
           if (tStatus) {
-            tStatus.innerText = (data.cdc_connected ? 'CDC Connected' : 'Ready') + ' • 9600 baud 8N1';
+            tStatus.innerText = (data.cdc_connected ? 'CDC LIVE' : 'READY') + ' 9600 8N1';
           }
           if (data.serial_log && Array.isArray(data.serial_log)) {
             data.serial_log.forEach(entry => {
@@ -1311,22 +1114,17 @@ const char SVS_UI_HTML[] = R"rawliteral(<!DOCTYPE html>
           }
         }
       } catch (e) {
-        const bConn = document.getElementById('badge-conn');
-        bConn.className = 'badge';
-        bConn.innerHTML = '<span class="dot"></span> Offline';
+        const dot = $('dot');
+        if (dot) dot.className = '';
       }
     }
-
-    const savedTheme = localStorage.getItem('svs_theme') || 'dark';
-    document.documentElement.setAttribute('data-theme', savedTheme);
-    updateThemeChecks(savedTheme);
-    appendTerminalLine('S', 'Donut Remix Serial Terminal active. Connected to SVS bridge.');
 
     renderInputs();
     updateHero();
     pollStatus();
     fetchModules(false);
     setInterval(pollStatus, 1500);
+    appendTerminalLine('S', 'Donut Remix Serial Console active. Attached to SVS bridge.');
   </script>
 </body>
 </html>)rawliteral";
