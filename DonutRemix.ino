@@ -60,6 +60,19 @@ void setup() {
 
 #if USB_MODE
     CdcSerial.setRxBufferSize(16384);
+    usbHost.onDeviceConnected([](const EspUsbHostDeviceInfo& info) {
+        if (info.vid == 0x1a86) {
+            // Scalable Video Switch (CH340)
+            CdcSerial.begin(9600);
+            deviceMgr.setRT4KBaud(9600);
+            Serial.println(F("[USB Host] Detected SVS Switch (CH340 9600 baud)"));
+        } else {
+            // RetroTINK 4K Pro (CDC-ACM)
+            CdcSerial.begin(2000000);
+            deviceMgr.setRT4KBaud(2000000);
+            Serial.println(F("[USB Host] Detected RT4K (CDC-ACM 2M baud)"));
+        }
+    });
     CdcSerial.begin(2000000);
     usbHost.begin();
 #endif
@@ -117,5 +130,23 @@ void loop() {
     ArduinoOTA.handle();
     webServer.handleClient();
     wsBridge.loop();
+
+#if USB_MODE
+    if (deviceMgr.isSvsConnected() || deviceMgr.getRT4KBaud() == 9600) {
+        static String svsLine = "";
+        while (CdcSerial.available()) {
+            char c = (char)CdcSerial.read();
+            if (c == '\n' || c == '\r') {
+                if (svsLine.length() > 0) {
+                    deviceMgr.parseSvsLine(svsLine.c_str());
+                    svsLine = "";
+                }
+            } else if (c >= 32 && c <= 126 && svsLine.length() < 128) {
+                svsLine += c;
+            }
+        }
+    }
+#endif
+
     vTaskDelay(pdMS_TO_TICKS(1)); // yield to FreeRTOS scheduler
 }

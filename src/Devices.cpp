@@ -400,4 +400,86 @@ void DeviceManager::wakeRT4K() {
 #endif
 }
 
+void DeviceManager::sendSvsCommand(const std::string& cmd) {
+    std::lock_guard<std::mutex> lock(m_ioMutex);
+#ifdef ARDUINO
+    std::string formatted = "\r" + cmd + "\r\n";
+    Serial0.print(formatted.c_str());
+    Serial.print(formatted.c_str());
+#if defined(USB_MODE) && USB_MODE
+    if (CdcSerial.connected()) {
+        if (!usbHost.serialWriteQueueReady()) {
+            usbHost.serialWriteQueueBegin(4, 2060);
+        }
+        CdcSerial.write((const uint8_t*)formatted.c_str(), formatted.length());
+        CdcSerial.flush();
+    }
+#endif
+#else
+    std::cout << "[Device Mock SVS] Command: " << cmd << std::endl;
+#endif
+}
+
+void DeviceManager::switchSvsInput(uint8_t input) {
+    m_svsCurrentInput = input;
+    sendSvsCommand("SVS_Change_Input_" + std::to_string(input));
+}
+
+void DeviceManager::seekSvsInput(bool up) {
+    sendSvsCommand(up ? "SVS_Input_Seek_Up" : "SVS_Input_Seek_Down");
+}
+
+void DeviceManager::cycleSvsInput(bool up) {
+    sendSvsCommand(up ? "SVS_Input_Up" : "SVS_Input_Down");
+}
+
+void DeviceManager::setSvsPower(bool on) {
+    m_svsPower = on;
+    sendSvsCommand(on ? "SVS_Power_ON" : "SVS_Power_OFF");
+}
+
+void DeviceManager::setSvsAttract(bool on) {
+    m_svsAttract = on;
+    sendSvsCommand(on ? "SVS_Attract_ON" : "SVS_Attract_OFF");
+}
+
+void DeviceManager::setSvsManualMode(bool on) {
+    m_svsManual = on;
+    sendSvsCommand(on ? "SVS_Manual_ON" : "SVS_Manual_OFF");
+}
+
+void DeviceManager::setSvsRgbComp(bool on) {
+    sendSvsCommand(on ? "SVS_RGB_Comp_ON" : "SVS_RGB_Comp_OFF");
+}
+
+void DeviceManager::setSvsCompRgb(bool on) {
+    sendSvsCommand(on ? "SVS_Comp_RGB_ON" : "SVS_Comp_RGB_OFF");
+}
+
+void DeviceManager::parseSvsLine(const std::string& line) {
+    m_svsConnected = true;
+    if (line.find("SVS_FW_") != std::string::npos) {
+        size_t idx = line.find("SVS_FW_");
+        m_svsFirmware = line.substr(idx + 7);
+        while (!m_svsFirmware.empty() && ((uint8_t)m_svsFirmware.back() < 0x20 || (uint8_t)m_svsFirmware.back() > 0x7E)) {
+            m_svsFirmware.pop_back();
+        }
+    } else if (line.find("SVS TOTAL INPUTS=") != std::string::npos) {
+        size_t idx = line.find("=");
+        if (idx != std::string::npos) {
+            m_svsTotalInputs = (uint8_t)std::atoi(line.c_str() + idx + 1);
+        }
+    } else if (line.find("SVS CURRENT INPUT=") != std::string::npos) {
+        size_t idx = line.find("=");
+        if (idx != std::string::npos) {
+            m_svsCurrentInput = (uint8_t)std::atoi(line.c_str() + idx + 1);
+        }
+    } else if (line.find("SVS NEW INPUT=") != std::string::npos) {
+        size_t idx = line.find("=");
+        if (idx != std::string::npos) {
+            m_svsCurrentInput = (uint8_t)std::atoi(line.c_str() + idx + 1);
+        }
+    }
+}
+
 } // namespace DonutRemix

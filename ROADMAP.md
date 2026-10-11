@@ -25,11 +25,21 @@ This document tracks completed features, architectural decisions, and module des
 
 ---
 
-## ⏸️ On Hold / Future: Scalable Video Switch (SVS) Module Architecture
-- **Decision:** To prevent resource starvation and avoid pushing the RT4K controller beyond memory/timing limits (USB CDC + OSD canvas streaming + WebCtl + WiFi + GameID polling), SVS support will be developed as a standalone architecture:
-  - **Option A (Dedicated Hardware):** Run SVS control on its own dedicated ESP32 Nano / SVS Bridge node on the network.
-  - **Option B (Separate Specialized Sketch):** A dedicated firmware build/sketch that targets the SVS hardware specifically while reusing the core Donut Remix network & security libraries.
-  - **Option C (Hardware Autodetection):** Optional runtime auto-detection if running in single-device mode.
+## ✅ Completed: Unified Scalable Video Switch (SVS) Bridge Module
+- [x] **Single Codebase & Dual-Device Hardware Auto-Detection:**
+  - Auto-detects connected USB peripheral upon plug event:
+    - **RetroTINK 4K:** CDC-ACM (`VID 0x0525`), runs at 2,000,000 baud with WebCtl canvas bridge, community profiles, and GameID polling.
+    - **Scalable Video Switch (SVS):** CH340 (`VID 0x1a86`), runs at 9,600 baud with SVS matrix switcher protocol.
+  - Native SVS control methods in `DeviceManager`:
+    - Direct input switching (`SVS_Change_Input_<N>`), seeking (`SVS_Input_Seek_Up/Down`), stepping (`SVS_Input_Up/Down`), attract mode, and power toggle.
+    - SVS banner parser extracting live firmware version (`SVS_FW_1.20`), total inputs (`SVS TOTAL INPUTS=6`), and active input.
+  - SVS REST API endpoints:
+    - `GET /api/v1/svs/status`: Reports connection state, firmware version, current input, total inputs, and power state.
+    - `POST /api/v1/svs/input`: Instant 1-click input switching.
+    - `POST /api/v1/svs/seek`: Active video signal seek (up/down).
+    - `POST /api/v1/svs/power`: Toggle SVS power / standby.
+    - `POST /api/v1/svs/command`: Guardrail-sanitized raw SVS commands.
+  - Flashed directly onto standalone ESP32 Nano SVS bridge node.
 
 ---
 

@@ -81,6 +81,13 @@ private:
     void handleCydRemote();
     void handleCydProfile();
     void handleCydExec();
+
+    // SVS (Scalable Video Switch) Handlers
+    void handleSvsStatus();
+    void handleSvsInput();
+    void handleSvsSeek();
+    void handleSvsPower();
+    void handleSvsCommand();
 #endif
 };
 

@@ -65,6 +65,25 @@ public:
     bool isUsbConnected() const;
     void wakeRT4K();
 
+    // SVS (Scalable Video Switch) Control
+    void sendSvsCommand(const std::string& cmd);
+    void switchSvsInput(uint8_t input);
+    void seekSvsInput(bool up);
+    void cycleSvsInput(bool up);
+    void setSvsPower(bool on);
+    void setSvsAttract(bool on);
+    void setSvsManualMode(bool on);
+    void setSvsRgbComp(bool on);
+    void setSvsCompRgb(bool on);
+    void parseSvsLine(const std::string& line);
+    bool isSvsConnected() const { return m_svsConnected; }
+    uint8_t getSvsCurrentInput() const { return m_svsCurrentInput; }
+    uint8_t getSvsTotalInputs() const { return m_svsTotalInputs; }
+    std::string getSvsFirmware() const { return m_svsFirmware; }
+    bool getSvsPower() const { return m_svsPower; }
+    bool getSvsAttract() const { return m_svsAttract; }
+    bool getSvsManualMode() const { return m_svsManual; }
+
     // HTTP Bulk PUT Session for WebCtl
     struct HttpPutSession {
         bool active{false};
@@ -98,6 +117,13 @@ private:
     int m_currentProfile{0};
     int m_prevProfile{0};
     uint32_t m_rt4kBaud{9600};
+    bool m_svsConnected{false};
+    uint8_t m_svsCurrentInput{0};
+    uint8_t m_svsTotalInputs{6};
+    std::string m_svsFirmware{"1.20"};
+    bool m_svsPower{true};
+    bool m_svsAttract{false};
+    bool m_svsManual{false};
 
     bool m_serialLocked{false};
     std::string m_lockOwner;

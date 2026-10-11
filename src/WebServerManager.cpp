@@ -91,6 +91,13 @@ void WebServerManager::begin() {
     m_server.on("/api/v1/rt4k/profile", HTTP_POST, [this]() { handleCydProfile(); });
     m_server.on("/api/v1/rt4k/exec", HTTP_POST, [this]() { handleCydExec(); });
 
+    // SVS (Scalable Video Switch) REST API
+    m_server.on("/api/v1/svs/status", HTTP_GET, [this]() { handleSvsStatus(); });
+    m_server.on("/api/v1/svs/input", HTTP_POST, [this]() { handleSvsInput(); });
+    m_server.on("/api/v1/svs/seek", HTTP_POST, [this]() { handleSvsSeek(); });
+    m_server.on("/api/v1/svs/power", HTTP_POST, [this]() { handleSvsPower(); });
+    m_server.on("/api/v1/svs/command", HTTP_POST, [this]() { handleSvsCommand(); });
+
     // WebCtl & Backward Compatibility endpoints
     m_server.on("/cmd", HTTP_POST, [this]() { handleLegacyCmd(); });
     m_server.on("/getConsoles", HTTP_GET, [this]() { handleGetConsoles(); });
@@ -1017,6 +1024,110 @@ void WebServerManager::handleCydExec() {
     String out;
     serializeJson(resp, out);
     m_server.send(200, "application/json", out);
+}
+
+void WebServerManager::handleSvsStatus() {
+    setSecurityHeaders();
+    JsonDocument doc;
+    doc["connected"] = m_devices.isSvsConnected() || m_devices.isUsbConnected();
+    doc["firmware"] = m_devices.getSvsFirmware();
+    doc["current_input"] = m_devices.getSvsCurrentInput();
+    doc["total_inputs"] = m_devices.getSvsTotalInputs();
+    doc["power"] = m_devices.getSvsPower();
+    doc["attract"] = m_devices.getSvsAttract();
+    doc["manual"] = m_devices.getSvsManualMode();
+    doc["uptime"] = (millis() / 1000);
+    String out;
+    serializeJson(doc, out);
+    m_server.send(200, "application/json", out);
+}
+
+void WebServerManager::handleSvsInput() {
+    if (!authenticateRequest()) return;
+    setSecurityHeaders();
+    if (!m_server.hasArg("plain") && !m_server.hasArg("input")) {
+        m_server.send(400, "application/json", "{\"error\":\"Missing input specification\"}");
+        return;
+    }
+    int inVal = 0;
+    if (m_server.hasArg("input")) {
+        inVal = m_server.arg("input").toInt();
+    } else {
+        JsonDocument doc;
+        DeserializationError err = deserializeJson(doc, m_server.arg("plain"));
+        if (!err && doc["input"].is<int>()) {
+            inVal = doc["input"].as<int>();
+        } else {
+            inVal = m_server.arg("plain").toInt();
+        }
+    }
+    if (inVal < 0 || inVal > 32) {
+        m_server.send(400, "application/json", "{\"error\":\"Input out of range (0-32)\"}");
+        return;
+    }
+    m_devices.switchSvsInput((uint8_t)inVal);
+    m_server.send(200, "application/json", "{\"ok\":true,\"input\":" + String(inVal) + "}");
+}
+
+void WebServerManager::handleSvsSeek() {
+    if (!authenticateRequest()) return;
+    setSecurityHeaders();
+    bool up = true;
+    if (m_server.hasArg("plain")) {
+        String p = m_server.arg("plain");
+        if (p.indexOf("down") >= 0 || p.indexOf("prev") >= 0) up = false;
+    }
+    if (m_server.hasArg("dir")) {
+        if (m_server.arg("dir").equalsIgnoreCase("down")) up = false;
+    }
+    m_devices.seekSvsInput(up);
+    m_server.send(200, "application/json", "{\"ok\":true,\"direction\":\"" + String(up ? "up" : "down") + "\"}");
+}
+
+void WebServerManager::handleSvsPower() {
+    if (!authenticateRequest()) return;
+    setSecurityHeaders();
+    bool on = true;
+    if (m_server.hasArg("plain")) {
+        String p = m_server.arg("plain");
+        if (p.indexOf("false") >= 0 || p.indexOf("off") >= 0 || p.indexOf("0") >= 0) on = false;
+    }
+    if (m_server.hasArg("power")) {
+        if (m_server.arg("power").equalsIgnoreCase("false") || m_server.arg("power").equalsIgnoreCase("off")) on = false;
+    }
+    m_devices.setSvsPower(on);
+    m_server.send(200, "application/json", "{\"ok\":true,\"power\":" + String(on ? "true" : "false") + "}");
+}
+
+void WebServerManager::handleSvsCommand() {
+    if (!authenticateRequest()) return;
+    setSecurityHeaders();
+    if (!m_server.hasArg("plain") && !m_server.hasArg("cmd")) {
+        m_server.send(400, "application/json", "{\"error\":\"Missing command\"}");
+        return;
+    }
+    std::string cmd;
+    if (m_server.hasArg("cmd")) {
+        cmd = m_server.arg("cmd").c_str();
+    } else {
+        JsonDocument doc;
+        DeserializationError err = deserializeJson(doc, m_server.arg("plain"));
+        if (!err && doc["cmd"].is<const char*>()) {
+            cmd = doc["cmd"].as<const char*>();
+        } else if (!err && doc["command"].is<const char*>()) {
+            cmd = doc["command"].as<const char*>();
+        } else {
+            cmd = m_server.arg("plain").c_str();
+        }
+    }
+    std::string clean;
+    auto res = Guardrails::sanitizeCommand(cmd, clean);
+    if (!res.valid) {
+        m_server.send(400, "application/json", "{\"error\":\"Command rejected by guardrail\"}");
+        return;
+    }
+    m_devices.sendSvsCommand(clean);
+    m_server.send(200, "application/json", "{\"ok\":true,\"command\":\"" + String(clean.c_str()) + "\"}");
 }
 #endif
 
