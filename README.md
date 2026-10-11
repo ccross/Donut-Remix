@@ -1,63 +1,38 @@
 # 🍩 Donut Remix
 
-**Donut Remix** is a modern, security-hardened, contract-first fork of [DonutShop](https://github.com/svirant/DonutShop) for the **Arduino Nano ESP32 (ESP32-S3)**, the **RetroTINK 4K**, and the **Scalable Video Switch (SVS)**. It automates RetroTINK 4K profiles based on `gameID` queries across network-connected retro consoles (such as PS1Digital, N64Digital, RetroGEM, and MemCardPro 2), hosts the authentic RetroTINK 4K WebCtl remote management suite, and provides a full-featured web dashboard and REST API controller for the Scalable Video Switch.
+**Donut Remix** is an open-source, security-hardened upgrade to [DonutShop](https://github.com/svirant/DonutShop) for the **Arduino Nano ESP32 (ESP32-S3)**. It unifies **RetroTINK 4K** profile automation and **Scalable Video Switch (SVS)** control into a single plug-and-play firmware.
 
-> [!NOTE]
-> **AI-Assisted Project:** Donut Remix is a Gemini-assisted project, engineered using contract-first modular architecture, automated security threat modeling, and test-driven verification.
-
----
-
-## Why Donut Remix?
-
-The upstream DonutShop project grew popular in late 2026, but subsequent releases shifted towards distributing precompiled closed binary releases (up to `v0.7.27`) without updating the public GNU GPLv3 source repository (which remained stuck at `v0.6.3`).
-
-A security and architecture audit of both the published source code and the `v0.7.27` release binary revealed critical network security risks to home networks:
-- **Zero Authentication:** The web interface, configuration endpoints, and raw hardware command channels were open to anyone on the LAN.
-- **Trivial Remote Code Execution (RCE):** The `/update` web endpoint and `ArduinoOTA` (port 3232) accepted arbitrary firmware flashes without passwords, tokens, or CSRF protection.
-- **Server-Side Request Forgery (SSRF):** Unauthenticated console addresses were continuously polled every 2 seconds without URL validation, enabling attackers to probe internal routers and IoT devices.
-- **Memory Corruption Flaws:** Unchecked loops over incoming JSON arrays caused buffer overflows on fixed RAM allocations.
-- **Thread Concurrency Issues:** Unsynchronized FreeRTOS tasks concurrently mutated shared globals without mutex locks.
-
-For full technical details, see the complete [SECURITY_AUDIT.md](file:///home/ccross/code/donut-remix/SECURITY_AUDIT.md).
+Connect it to your RetroTINK 4K for automatic `gameID` profile switching and full WebCtl remote management, or plug it into your Scalable Video Switch for a modern web dashboard with input switching, transcoder options, and a live serial console.
 
 ---
 
-## Key Features in Donut Remix
+## What's Different?
 
-- 🛡️ **Secure by Default:**
-  - Mandatory admin login and session token management (`Authorization: Bearer <token>`).
-  - Salted SHA-256 password storage with timing-safe comparisons.
-  - Brute-force rate limiting (locks out aggressive attackers after 5 failed attempts).
-  - Port 3232 `ArduinoOTA` protected by cryptographic password authentication.
-- 🔀 **Scalable Video Switch (SVS) Bridge & Matrix Controller:**
-  - **Zero-Configuration USB Auto-Detection:** Automatically detects whether an SVS (CH340 @ 9,600 baud) or RT4K (CDC-ACM / FTDI @ 2,000,000 baud) is plugged into USB OTG.
-  - **Dedicated SVS Web Dashboard:** Clean, responsive Single Page Application with instant channel switching (0–32), active video seek, power toggle, attract mode, and manual mode.
-  - **Output Module Transcoders & Sync Processing:** Full control over RGB-to-Component (`R590`/`R591`), Component-to-RGB, RGsB (Sync-on-Green), and Sync Bypass cards via interactive per-input modal and REST API.
-  - **Real-Time Serial Console:** Built-in terminal log streaming from a thread-safe circular buffer with quick command chips.
-- 🎨 **100% Theme & Visual Parity:**
-  - Unified **Donut Remix** branding across both RT4K WebCtl and SVS dashboards.
-  - Authentic WebCtl design tokens: Dark and Glazed modes with frosted translucent cards (`backdrop-filter: blur(16px)`), cyan card headers, and multi-radial pastel backdrops.
-  - Click-to-open theme switcher popover preventing premature switching, with dual `localStorage` and NVS persistence (`POST /webctl-theme`).
-- 🚦 **Network & Input Guardrails:**
-  - SSRF protection: Rejects loopback (`127.0.0.1`, `localhost`), cloud metadata (`169.254.169.254`), multicast, and dangerous ports.
-  - Hostname validation: Strictly enforces lowercase `a-z`, `0-9`, and `-` (no edge hyphens, max 32 chars) preventing mDNS/DNS crashes (upstream v0.7.14 regression).
-  - Path traversal prevention: Rejects `..` and illegal filesystem characters in file manager operations (`/api/files/*`).
-  - Command sanitization: Strips null bytes and control escapes before serial/IR dispatch.
-  - Safe bounds checking on all collections (`MAX_CONSOLES` = 16, `MAX_GAMEDB` = 2,000).
-- 🔒 **Serial Bus Lock & Concurrency Guardrail:**
-  - Automatically suspends background GameID polling whenever firmware updates or file transfers occur, eliminating serial packet collisions and FreeRTOS DMA crashes (upstream v0.7.5 / v0.7.9 regression).
-- 📡 **Well-Documented REST API & Full WebCtl Compatibility:**
-  - Modern, versioned REST endpoints (`/api/v1/status`, `/api/v1/consoles`, `/api/v1/gamedb`, `/api/v1/command`).
-  - Microcontroller touch endpoints (`/api/v1/rt4k/status`, `/api/v1/rt4k/profile`, `/api/v1/rt4k/remote`, `/api/v1/rt4k/exec`) for Cheap Yellow Displays (CYD).
-  - Complete SVS endpoints (`/api/v1/svs/status`, `/api/v1/svs/input`, `/api/v1/svs/seek`, `/api/v1/svs/power`, `/api/v1/svs/modules`, `/api/v1/svs/command`).
-  - Drop-in support for the REST API introduced in upstream v0.7.25 (`/api/info`, `/api/status`, `/api/command`, `/api/files/*`, `/api/files/mkdir`, `/api/files/move`), secured with authentication.
-  - Complete [OpenAPI 3.0 Specification](file:///home/ccross/code/donut-remix/docs/openapi.yaml).
-  - Comprehensive human-readable [API Documentation](file:///home/ccross/code/donut-remix/docs/API.md).
-- 🧩 **Modular Architecture & Memory Safety:**
-  - Deconstructed the fragile 6,000-line monolithic `.ino` into clean, decoupled C++ modules with FreeRTOS mutex synchronization.
-  - Fixed-capacity data structures and streaming serialization prevent ESP32-S3 SRAM heap exhaustion.
-- 🔄 **Backward Compatibility:**
-  - Legacy endpoints (`/cmd`, `/getConsoles`, `/getGameDB`, `/getVars`, `/term`) remain functional for existing automations while being protected by authentication.
+Upstream DonutShop became popular for retro console automation, but development stalled and shifted toward unauthenticated binary-only releases. Donut Remix restores an open, modular codebase while adding essential security and hardware capabilities:
+
+| Feature | Upstream DonutShop | Donut Remix |
+| :--- | :--- | :--- |
+| **Hardware Support** | RetroTINK 4K only | **Auto-detects RetroTINK 4K or Scalable Video Switch (SVS)** |
+| **Security** | None (open on local network) | **Admin login, session tokens, brute-force lockout** |
+| **SVS Matrix Control** | ❌ None | **Web dashboard, transcoder controls, live serial terminal** |
+| **WebCtl Interface** | Iframe-based / precompiled | **Native responsive suite with Dark & Glazed (light) themes** |
+| **Network Safety** | Unrestricted polling | **SSRF protection, safe URL filters, bus collision locks** |
+| **Automation APIs** | Ad-hoc / undocumented | **REST API v1, OpenAPI 3.0, and touch screen (CYD) endpoints** |
+
+> For the in-depth security analysis and vulnerability assessment, see [SECURITY_AUDIT.md](file:///home/ccross/code/donut-remix/SECURITY_AUDIT.md).
+
+---
+
+## Key Features
+
+- 🔀 **Zero-Config Hardware Auto-Detection:** Automatically detects whether an SVS (9,600 baud CH340) or RetroTINK 4K (2,000,000 baud CDC-ACM/FTDI) is plugged in.
+- 🎛️ **Scalable Video Switch (SVS) Web Dashboard:** Instant channel switching (0–32), active signal seek, power/standby toggle, attract mode, and real-time serial terminal.
+- 🎚️ **SVS Transcoder & Sync Options:** Full web and API control for RGB-to-Component (`R590`/`R591`), Component-to-RGB, RGsB (Sync-on-Green), and Sync Bypass cards.
+- 📺 **Authentic RetroTINK 4K WebCtl Suite:** Web remote, live canvas OSD stream, SD card file manager, and GameID auto-switching with 1,600+ community profiles.
+- 🎨 **1:1 Visual & Theme Parity:** Identical Dark and Glazed (pastel glassmorphism) themes across both devices with instant NVS persistence.
+- 🛡️ **Secure by Default:** Password authentication, session tokens, rate limiting, and network guardrails protecting against SSRF and unauthorized firmware flashes.
+- 📱 **Microcontroller & Automation APIs:** Lightweight REST endpoints designed for ESP32 Cheap Yellow Displays (CYD), Home Assistant, and scripting.
+- 🔄 **Backward Compatibility:** Legacy endpoints remain supported for existing automations behind security middleware.
 
 ---
 
